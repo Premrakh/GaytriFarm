@@ -1,0 +1,31 @@
+# ========================================
+# python & django 
+# ========================================
+.env
+*.pyc
+__pycache__/
+.vscode/
+db.sqlite3
+staticfiles/
+gaytri_farm_app/firebase-cred.json
+
+# ========================================
+# Virtual environments
+# ========================================
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+
+# ========================================
+# Logs
+# ========================================
+*.log
+*.pot
+*.pyc
+coverage.xml
+htmlcov/
+celerybeat-schedule
+celerybeat.pid
