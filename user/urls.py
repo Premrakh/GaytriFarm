@@ -1,17 +1,22 @@
 from django.urls import path
-from .views import (UserRegistrationView, UserLoginView, EmailVerificationView,
-                    SendEmailTokenView, UserLogoutView, UserProfile,UpdateFCMTokenView,
-                    ForgotPasswordView, ResetPasswordView, RoleWiseUsersView
+from .views import (UserRegistrationView, UserLoginView, EmailVerificationView, UserRoleView,
+                    SendEmailTokenView, UserLogoutView, UserProfile,UpdateFCMTokenView,ForgotPasswordView,
+                    ResetPasswordView, RoleWiseUsersView,AccountView,DistributorView, CustomersView , DeliveryStaffView, DistributorView
                     )
 urlpatterns = [
-    path('register/', UserRegistrationView.as_view(), name='user-register'),
-    path('login/', UserLoginView.as_view(), name='user-login'),
-    path('logout/', UserLogoutView.as_view(), name='user-logout'),
-    path('send-email-token/', SendEmailTokenView.as_view(), name='send-email-token'),
-    path('verify-email/', EmailVerificationView.as_view(), name='email-verify'),
-    path('profile/', UserProfile.as_view(), name='user-profile'),
-    path('update-fcm-token/', UpdateFCMTokenView.as_view(), name='update-fcm-token'),
-    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
-    path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
-    path('role/<str:role>/', RoleWiseUsersView.as_view(), name='role-wise-users'),
-]   
+    path('register/', UserRegistrationView.as_view()),
+    path('login/', UserLoginView.as_view()),
+    path('logout/', UserLogoutView.as_view()),
+    path('send-email-token/', SendEmailTokenView.as_view()),
+    path('verify-email/', EmailVerificationView.as_view()),
+    path('role/', UserRoleView.as_view()),
+    path('profile/', UserProfile.as_view()),
+    path('account/', AccountView.as_view()),
+    path('update-fcm-token/', UpdateFCMTokenView.as_view()),
+    path('forgot-password/', ForgotPasswordView.as_view()),
+    path('reset-password/', ResetPasswordView.as_view()),
+    path('role/<str:role>/', RoleWiseUsersView.as_view()),
+    path('customers/', CustomersView.as_view()),
+    path('delivery-staff/', DeliveryStaffView.as_view()),
+    path('distributors/', DistributorView.as_view()),
+]

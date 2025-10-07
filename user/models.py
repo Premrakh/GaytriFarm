@@ -52,16 +52,6 @@ class User(AbstractBaseUser, PermissionsMixin, Base):
     REQUIRED_FIELDS = []
     objects = UserManager()
 
-    def save(self, *args, **kwargs):
-        if self.country:
-            self.country = self.country.title()
-        if self.state:
-            self.state = self.state.title()
-        if self.city:
-            self.city = self.city.title()
-        super().save(*args, **kwargs)
-
-
     def __str__(self):
         return self.user_name or ""
 
@@ -86,3 +76,14 @@ class UserProfile(Base):
     city = models.CharField(max_length=128, null=True, blank=True)
     address = models.TextField(null=True, blank=True)
     pin_code = models.IntegerField(null=True,blank=True)
+
+
+class Notification(Base):
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=255, null=False, blank=False)
+    message = models.TextField(null=False, blank=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Notification to {self.user.user_name}: {self.title}"

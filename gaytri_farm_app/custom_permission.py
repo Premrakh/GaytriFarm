@@ -21,13 +21,13 @@ class IsVerified(BasePermission):
 
 class IsRegistered(BasePermission):
     def has_permission(self, request, view):
-        if  request.user.is_registered:
+        if  request.user.role_accepted:
             return True
         raise PermissionDenied(detail={
             "success": False,
             "code": "user_not_registered",
             "data":{
-                "is_registered":False
+                "role_accepted":False
             },
             "message": "User not registered."
         })

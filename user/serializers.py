@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import User, UserProfile
 import re
 
-class UserSerializer(serializers.ModelSerializer):
+class UserRegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
     user_name = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
@@ -20,9 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
     
 class EmailVerificationSerializer(serializers.Serializer):
     token = serializers.CharField(write_only=True, max_length=16)
-    def validate_email(self, value):
-        value = value.strip().lower()
-        return value
+
 
 class UserLoginSerializer(serializers.Serializer):
     user_name = serializers.CharField(required=False)
@@ -81,3 +79,20 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("password and confirm_password fields didn't match.")
         return value
 
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
+
+class EnrollUsersSerializer(serializers.Serializer):
+    class Meta:
+        model = User
+        fields = ['user_id', 'user_name','email','role_accepted']
+
+class UserApprovalSerializer(serializers.Serializer):
+    user_id  = serializers.UUIDField()
+    action = serializers.BooleanField()
+
+class CustomerApprovalSerializer(UserApprovalSerializer):
+    delivery_staff_id  = serializers.UUIDField()
+    
