@@ -29,16 +29,16 @@ class User(AbstractBaseUser, PermissionsMixin, Base):
 
     # ---------- ROLE MANAGEMENT ----------
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, null=True, blank=True)
-    role_accepted = models.BooleanField(null=True, blank=True)
+    role_accepted = models.BooleanField(default=False)
     distributor = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,related_name="distributor_users")
     delivery_staff = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,related_name="delivery_staff_users")
 
     # ---------- STATUS FLAGS ----------
+    is_email_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_registered = models.BooleanField(default=False)
-    is_email_verified = models.BooleanField(default=False)
 
     # ---------- NOTIFICATION ----------
     fcm_token = models.CharField(max_length=255, null=True, blank=True)   #Firebase Cloud Messaging Token

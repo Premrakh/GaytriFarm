@@ -84,7 +84,7 @@ class AccountSerializer(serializers.ModelSerializer):
         model = User
         exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
 
-class EnrollUsersSerializer(serializers.Serializer):
+class EnrollUsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['user_id', 'user_name','email','role_accepted']
@@ -96,11 +96,6 @@ class UserApprovalSerializer(serializers.Serializer):
 class CustomerApprovalSerializer(UserApprovalSerializer):
     delivery_staff_id  = serializers.UUIDField()
     
-
-
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)

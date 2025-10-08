@@ -1,3 +1,4 @@
+from random import choices
 from uuid import uuid4
 from django.db import models
 from user.models import User , Base
@@ -12,13 +13,24 @@ class Product(Base):
         return self.name
     
 class Order(Base):
+    PENDING = 'pending'
+    DELIVERED = 'delivered'
+    CANCELED = 'canceled'
+
+    ORDER_CHOICES = [
+        (PENDING, 'Pending'),
+        (DELIVERED, 'Delivered'),
+        (CANCELED, 'Canceled'),
+    ]
+
     order_id = models.UUIDField(primary_key=True, default=uuid4, editable=False, unique=True)
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     delivery_staff = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='deliveries')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     total_price = models.PositiveIntegerField()
-    order_date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=50, choices=ORDER_CHOICES, default=PENDING)
 
     def __str__(self):
         return f"{self.order_id}"

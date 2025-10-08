@@ -11,7 +11,7 @@ from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UserAp
 from gaytri_farm_app.utils import wrap_response
 from .service import generate_token, send_forgot_password_email, send_verification_email, unzip_token
 from rest_framework.permissions import IsAuthenticated
-from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission,
+from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission,
          DeliveryStaffPermission, CustomerPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -216,6 +216,8 @@ class UserRoleView(APIView):
     permission_classes = [IsAuthenticated, IsVerified]
     def post(self, request):
         user = request.user
+        if user.role_accepted:
+            return wrap_response(False, "role_already_accepted", message="User role already accepted")
         serializer = UserRoleSerializer(data=request.data)
         if not serializer.is_valid():
             return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
@@ -227,11 +229,28 @@ class UserRoleView(APIView):
                 distributor = User.objects.get(user_id=distributor_id)
                 user.distributor = distributor
             user.save()
-            return wrap_response(True, "role_updated", message="User role updated successfully.")
+            return wrap_response(True, "role_added", message="User role added successfully.")
         except User.DoesNotExist:
             return wrap_response(False, "distributor_not_found", message="Distributor not found.", status_code=status.HTTP_404_NOT_FOUND)
     
-    
+    def patch(self, request):
+        user = request.user
+        serializer = UserRoleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
+        role = serializer.validated_data.get('role')
+        distributor_id = serializer.validated_data.get('distributor_id')
+        try:
+            user.role = role
+            user.role_accepted = False
+            if distributor_id:  
+                distributor = User.objects.get(user_id=distributor_id)
+                user.distributor = distributor
+            user.save()
+            return wrap_response(True, "role_updated", message="User role updated successfully.")
+        except User.DoesNotExist:
+            return wrap_response(False, "distributor_not_found", message="Distributor not found.", status_code=status.HTTP_404_NOT_FOUND)
+
 class AccountView(APIView):
     permission_classes = [IsAuthenticated, IsVerified]
     def get(self,request):
@@ -346,23 +365,23 @@ class CustomersView(APIView):
     ''' This view is for distributor to see their customers'''
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsAuthenticated(), IsVerified(), DistributorPermission() | AdminUserPermission()]
+            return [IsAuthenticated(), IsVerified(), AdminOrDistributorPermission()]
         else:
             return [IsAuthenticated(), IsVerified(), DistributorPermission()]
 
     def get(self, request):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
-        if user.role == User.DISTRIBUTOR:
-            if role_accepted in [True, False]:
+        if role_accepted in ["true", "false"]:
+            role_accepted = True if role_accepted == "true" else False
+            if user.role == User.DISTRIBUTOR:
                 customers = User.objects.filter(role=User.CUSTOMER, distributor=request.user, role_accepted=role_accepted).order_by('-created')
             else:
-                return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
-        else:
-            customers = User.objects.filter(role=User.CUSTOMER, role_accepted=True).order_by('-created')
+                customers = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted).order_by('-created')
+            serializer = EnrollUsersSerializer(customers, many=True)
+            return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
+        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
 
-        serializer = EnrollUsersSerializer(customers, many=True)
-        return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
     
     def post(self, request):
         serializer = CustomerApprovalSerializer(data=request.data)
@@ -371,49 +390,49 @@ class CustomersView(APIView):
             delivery_staff_id = serializer.validated_data.get('delivery_staff_id')
             action = serializer.validated_data.get('action')
             if action==False:
-                users = User.objects.filter(user_id=user_id, role=User.CUSTOMER).update(role_accepted=action)
+                users = User.objects.filter(user_id=user_id, distributor=request.user, role=User.CUSTOMER).update(role_accepted=action)
             else:
-                if not User.objects.filter(user_id=delivery_staff_id, role=User.DELIVERY_STAFF).exists():
+                if not User.objects.filter(user_id=delivery_staff_id, role=User.DELIVERY_STAFF, role_accepted=True).exists():
                     return wrap_response(False, "invalid_delivery_staff", message="Invalid delivery staff ID.")
 
-                users = User.objects.filter(user_id=user_id, role=User.CUSTOMER).update(role_accepted=action, delivery_staff_id=delivery_staff_id)
+                users = User.objects.filter(user_id=user_id, distributor=request.user, role=User.CUSTOMER).update(role_accepted=action, delivery_staff_id=delivery_staff_id)
                 if users == 0:
                     return wrap_response(False, "no_users_updated", message="No users were updated. Please check the provided user IDs.")
 
-            return wrap_response(True, "users_updated", message="Customer approval status updated successfully.")    
+            return wrap_response(True, "role_accepted", message="Customer role accepted successfully.")
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
     
 class DeliveryStaffView(APIView):
     ''' This view is for Admin/distributor to see their delivery staff'''
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsAuthenticated(), IsVerified(), DistributorPermission() | AdminUserPermission()]
+            return [IsAuthenticated(), IsVerified(), AdminOrDistributorPermission()]
         else:
             return [IsAuthenticated(), IsVerified(), DistributorPermission()]
         
     def get(self, request):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
-        if user.role == User.DISTRIBUTOR:
-            if role_accepted in [True, False]:
+        if role_accepted in ["true", "false"]:
+            role_accepted = True if role_accepted == "true" else False
+            if user.role == User.DISTRIBUTOR:
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor=user, role_accepted=role_accepted).order_by('-created')
             else:
-                return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
-        else:
-            customers = User.objects.filter(role=User.DELIVERY_STAFF, role_accepted=True).order_by('-created')
-        serializer = EnrollUsersSerializer(customers, many=True)
-        return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
+                customers = User.objects.filter(role=User.DELIVERY_STAFF, role_accepted=role_accepted).order_by('-created')
+            serializer = EnrollUsersSerializer(customers, many=True)
+            return wrap_response(True, "staff_list", data=serializer.data, message="Staff fetched successfully.")
+        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
     
     def post(self, request):
         serializer = UserApprovalSerializer(data=request.data)
         if serializer.is_valid():
             user_id = serializer.validated_data.get('user_id')
             action = serializer.validated_data.get('action')
-            users = User.objects.filter(user_id=user_id, role=User.DELIVERY_STAFF).update(role_accepted=action)
+            users = User.objects.filter(user_id=user_id, distributor=request.user, role=User.DELIVERY_STAFF).update(role_accepted=action)
             if users == 0:
                 return wrap_response(False, "no_users_updated", message="No users were updated. Please check the provided user IDs.")
 
-            return wrap_response(True, "users_updated", message="Delivery staff approval status updated successfully.")    
+            return wrap_response(True, "role_accepted", message="Delivery role accepted successfully.")    
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
 
 class DistributorView(APIView):
@@ -421,7 +440,8 @@ class DistributorView(APIView):
     permission_classes = [IsAuthenticated, IsVerified, AdminUserPermission]
     def get(self, request):
         role_accepted = request.query_params.get('role_accepted')
-        if role_accepted in [True, False]:
+        if role_accepted in ["true", "false"]:
+            role_accepted = True if role_accepted == "true" else False
             users = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=role_accepted).order_by('-created')
             return wrap_response(True, "distributors_list", data=EnrollUsersSerializer(users, many=True).data, message="Distributors fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
@@ -438,14 +458,11 @@ class DistributorView(APIView):
             return wrap_response(True, "users_updated", message="Distributor approval status updated successfully.")    
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
 
-
-#-------------------------------------Dhruv--------------------------------------------#
-
 class ChangePasswordView(APIView):
     """
     Allows authenticated users to change their password by providing the old password.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsVerified]
 
     def post(self, request, *args, **kwargs):
         serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
@@ -453,53 +470,18 @@ class ChangePasswordView(APIView):
             user = request.user
             user.set_password(serializer.validated_data['new_password'])
             user.save()
-            return wrap_response(
-                success=True,
-                code="PASSWORD_CHANGED",
-                message="Password changed successfully."
-            )
-        return wrap_response(
-            success=False,
-            code="INVALID_DATA",
-            errors=serializer.errors
-        )
+            return wrap_response(success=True, code="password_changed", message="Password changed successfully.")
+        return wrap_response(success=False, code="invalid_data", errors=serializer.errors)
 
-
-# 1. Ask Permission
-class AskPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        data = {
-            "question": "Do you allow notifications?",
-            "userId": str(request.user.user_id),  # From JWT
-            "possibleAnswers": ["yes", "no"]
-        }
+class ChangeNotificationModeView(APIView):
+    permission_classes=[IsAuthenticated,IsVerified,IsRegistered]
+    def get(self, request, *args, **kwargs):
+        request.user.allow_notification = not request.user.allow_notification
+        request.user.save()
         return wrap_response(
             success=True,
-            code="ASK_PERMISSION",
-            data=data
-        )
-
-
-# 2. Answer Permission
-class AnswerPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        answer = request.data.get("answer")
-        if not answer:
-            return wrap_response(False, "MISSING_ANSWER", message="Answer is required.")
-
-        allow = answer.strip().lower() == "yes"
-        user = request.user
-        user.allow_notification = allow
-        user.save(update_fields=["allow_notification"])
-
-        return wrap_response(
-            True,
-            "ANSWER_PERMISSION",
-            data={"userId": str(user.user_id), "allowNotification": allow},
-            message=f"User {user.user_id} answered {answer}"
+            code='notify_mode_changed',
+            message="Successfully changed notify mode.",
+            data={"allow_notification":request.user.allow_notification},
         )
 
