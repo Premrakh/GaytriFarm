@@ -6,7 +6,7 @@ import random, string
 from django.utils import timezone
 from .models import User, EmailVerificationToken
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UserApprovalSerializer, UserRegisterSerializer, EmailVerificationSerializer, UserLoginSerializer,
-        UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer, CustomerApprovalSerializer
+        UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer, CustomerApprovalSerializer,ChangePasswordSerializer
                           )
 from gaytri_farm_app.utils import wrap_response
 from .service import generate_token, send_forgot_password_email, send_verification_email, unzip_token
@@ -437,3 +437,69 @@ class DistributorView(APIView):
 
             return wrap_response(True, "users_updated", message="Distributor approval status updated successfully.")    
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
+
+
+#-------------------------------------Dhruv--------------------------------------------#
+
+class ChangePasswordView(APIView):
+    """
+    Allows authenticated users to change their password by providing the old password.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = request.user
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            return wrap_response(
+                success=True,
+                code="PASSWORD_CHANGED",
+                message="Password changed successfully."
+            )
+        return wrap_response(
+            success=False,
+            code="INVALID_DATA",
+            errors=serializer.errors
+        )
+
+
+# 1. Ask Permission
+class AskPermissionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = {
+            "question": "Do you allow notifications?",
+            "userId": str(request.user.user_id),  # From JWT
+            "possibleAnswers": ["yes", "no"]
+        }
+        return wrap_response(
+            success=True,
+            code="ASK_PERMISSION",
+            data=data
+        )
+
+
+# 2. Answer Permission
+class AnswerPermissionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        answer = request.data.get("answer")
+        if not answer:
+            return wrap_response(False, "MISSING_ANSWER", message="Answer is required.")
+
+        allow = answer.strip().lower() == "yes"
+        user = request.user
+        user.allow_notification = allow
+        user.save(update_fields=["allow_notification"])
+
+        return wrap_response(
+            True,
+            "ANSWER_PERMISSION",
+            data={"userId": str(user.user_id), "allowNotification": allow},
+            message=f"User {user.user_id} answered {answer}"
+        )
+

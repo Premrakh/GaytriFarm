@@ -96,3 +96,28 @@ class UserApprovalSerializer(serializers.Serializer):
 class CustomerApprovalSerializer(UserApprovalSerializer):
     delivery_staff_id  = serializers.UUIDField()
     
+
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Old password is incorrect.")
+        return value
+    
+    def validate_password(self, value):
+        pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError(
+                "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one digit, and one special character."
+            )
+        return value
+
+  
