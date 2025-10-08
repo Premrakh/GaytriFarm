@@ -11,7 +11,7 @@ from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UserAp
 from gaytri_farm_app.utils import wrap_response
 from .service import generate_token, send_forgot_password_email, send_verification_email, unzip_token
 from rest_framework.permissions import IsAuthenticated
-from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission,
+from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission,AdminorDistributorPermission,
          DeliveryStaffPermission, CustomerPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -346,7 +346,7 @@ class CustomersView(APIView):
     ''' This view is for distributor to see their customers'''
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsAuthenticated(), IsVerified(), DistributorPermission() | AdminUserPermission()]
+            return [IsAuthenticated(), IsVerified(),AdminorDistributorPermission()]
         else:
             return [IsAuthenticated(), IsVerified(), DistributorPermission()]
 
@@ -354,7 +354,8 @@ class CustomersView(APIView):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
         if user.role == User.DISTRIBUTOR:
-            if role_accepted in [True, False]:
+            if role_accepted in ["true", "false"]:
+                role_accepted = True if role_accepted == "true" else False
                 customers = User.objects.filter(role=User.CUSTOMER, distributor=request.user, role_accepted=role_accepted).order_by('-created')
             else:
                 return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
@@ -387,7 +388,7 @@ class DeliveryStaffView(APIView):
     ''' This view is for Admin/distributor to see their delivery staff'''
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsAuthenticated(), IsVerified(), DistributorPermission() | AdminUserPermission()]
+            return [IsAuthenticated(), IsVerified(),AdminorDistributorPermission()]
         else:
             return [IsAuthenticated(), IsVerified(), DistributorPermission()]
         
@@ -395,7 +396,8 @@ class DeliveryStaffView(APIView):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
         if user.role == User.DISTRIBUTOR:
-            if role_accepted in [True, False]:
+            if role_accepted in ["true", "false"]:
+                role_accepted = True if role_accepted == "true" else False
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor=user, role_accepted=role_accepted).order_by('-created')
             else:
                 return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
@@ -421,9 +423,11 @@ class DistributorView(APIView):
     permission_classes = [IsAuthenticated, IsVerified, AdminUserPermission]
     def get(self, request):
         role_accepted = request.query_params.get('role_accepted')
-        if role_accepted in [True, False]:
+        if role_accepted in ["true", "false"]:
+            role_accepted = True if role_accepted == "true" else False
             users = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=role_accepted).order_by('-created')
-            return wrap_response(True, "distributors_list", data=EnrollUsersSerializer(users, many=True).data, message="Distributors fetched successfully.")
+            serializer = EnrollUsersSerializer(users, many=True)
+            return wrap_response(True, "distributors_list", data=serializer.data, message="Distributors fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
 
     def post(self, request):
@@ -439,8 +443,7 @@ class DistributorView(APIView):
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
 
 
-#-------------------------------------Dhruv--------------------------------------------#
-
+# 1. Change Password
 class ChangePasswordView(APIView):
     """
     Allows authenticated users to change their password by providing the old password.
@@ -502,4 +505,3 @@ class AnswerPermissionView(APIView):
             data={"userId": str(user.user_id), "allowNotification": allow},
             message=f"User {user.user_id} answered {answer}"
         )
-

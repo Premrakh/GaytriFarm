@@ -20,7 +20,6 @@ urlpatterns = [
     path('customers/', CustomersView.as_view()),
     path('delivery-staff/', DeliveryStaffView.as_view()),
     path('distributors/', DistributorView.as_view()),
-    #-----------------------------Dhruv------------------------------------------#
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path("ask-permission/", AskPermissionView.as_view(), name="ask-permission"),
     path("answer-permission/", AnswerPermissionView.as_view(), name="answer-permission"),

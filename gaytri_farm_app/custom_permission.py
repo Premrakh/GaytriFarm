@@ -2,7 +2,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.exceptions import APIException,PermissionDenied
 from gaytri_farm_app.utils import wrap_response
 from django.utils import timezone
-
+from user.models import User
 
 class IsVerified(BasePermission):
     def has_permission(self, request, view):
@@ -84,3 +84,26 @@ class CustomerPermission(BasePermission):
             },
             "message": "User is not a customer."
         })
+
+
+class AdminorDistributorPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.role in [request.user.DISTRIBUTOR, request.user.ADMIN] and request.user.role_accepted:
+                return True
+        raise PermissionDenied(detail={
+            "success": False,
+            "code": "user_not_distributor",
+            "data":{
+                "role":request.user.role
+            },
+            "message": "User is not a distributor."
+        })
+    
+class IsAdminUser(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.is_staff
+
+
+class IsCustomerUser(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and not request.user.is_staff
