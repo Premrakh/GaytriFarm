@@ -99,11 +99,15 @@ class AdminorDistributorPermission(BasePermission):
             "message": "User is not a distributor."
         })
     
-class IsAdminUser(BasePermission):
+class CustomerOrAdminPermission(BasePermission):
+    """
+    Allow access if the user is either a Customer OR an Admin.
+    """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_staff
-
-
-class IsCustomerUser(BasePermission):
-    def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and not request.user.is_staff
+        # Check if user is a customer
+        if CustomerPermission().has_permission(request, view):
+            return True
+        # Check if user is an admin
+        if AdminUserPermission().has_permission(request, view):
+            return True
+        return False
