@@ -35,13 +35,13 @@ class IsRegistered(BasePermission):
 
 class AdminUserPermission(BasePermission):
     def has_permission(self, request, view):
-        if request.user.is_superuser and request.user.is_staff:
+        if request.user.is_superuser:
                 return True
         raise PermissionDenied(detail={
             "success": False,
             "code": "user_not_admin",
             "data":{
-                "is_staff":False
+                "is_superuser":False
             },
             "message": "User is not an admin."
         })
@@ -54,7 +54,8 @@ class DistributorPermission(BasePermission):
             "success": False,
             "code": "user_not_distributor",
             "data":{
-                "role":request.user.role
+                "role":request.user.role,
+                "role_accepted":request.user.role_accepted
             },
             "message": "User is not a distributor."
         })
@@ -67,7 +68,8 @@ class DeliveryStaffPermission(BasePermission):
             "success": False,
             "code": "user_not_delivery_staff",
             "data":{
-                "role":request.user.role
+                "role":request.user.role,
+                "role_accepted":request.user.role_accepted
             },
             "message": "User is not a delivery staff."
         })
@@ -80,22 +82,24 @@ class CustomerPermission(BasePermission):
             "success": False,
             "code": "user_not_customer",
             "data":{
-                "role":request.user.role
+                "role":request.user.role,
+                "role_accepted":request.user.role_accepted
             },
             "message": "User is not a customer."
         })
 
 
-class AdminorDistributorPermission(BasePermission):
+class AdminOrDistributorPermission(BasePermission):
     def has_permission(self, request, view):
-        if request.user.role in [request.user.DISTRIBUTOR, request.user.ADMIN] and request.user.role_accepted:
+        if request.user.role == User.DISTRIBUTOR and request.user.role_accepted:
+                return True
+        if request.user.is_superuser:
                 return True
         raise PermissionDenied(detail={
             "success": False,
-            "code": "user_not_distributor",
+            "code": "user_not_distributor_or_admin",
             "data":{
-                "role":request.user.role
+                "role":request.user.role,
             },
-            "message": "User is not a distributor."
+            "message": "User is neither a distributor nor an admin."
         })
-
