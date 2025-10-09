@@ -2,21 +2,19 @@ from django.shortcuts import render
 from gaytri_farm_app.utils import wrap_response
 from rest_framework.views import APIView
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from gaytri_farm_app.custom_permission import IsVerified, CustomerOrAdminPermission ,AdminUserPermission,CustomerPermission
+from rest_framework.permissions import IsAuthenticated
+from gaytri_farm_app.custom_permission import (
+    IsVerified,  AdminUserPermission, CustomerPermission
+)
 from .models import *
 from .serializers import *
-from rest_framework.response import Response
 
-# Create your views here.
-# Product Views for add product , update product , delete product , get product details and list of products
-
+# Product Views
 class ProductDetailAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-
+    
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsAuthenticated(), IsVerified(),CustomerOrAdminPermission()]
+            return [IsAuthenticated(), IsVerified()]
         else:
             return [IsAuthenticated(), IsVerified(), AdminUserPermission()]
         
@@ -27,45 +25,54 @@ class ProductDetailAPIView(APIView):
             return None
         
     def get(self, request, pk=None):
-        if pk:  # If pk is provided, return a single product
+        if pk:
             product = self.get_object(pk)
             if not product:
-                return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+                return wrap_response(
+                    success=False,
+                    code="PRODUCT_NOT_FOUND",
+                    message="Product not found",
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
             serializer = ProductSerializer(product)
-            return Response(serializer.data)
-    
-        # Otherwise, return all products
+            return wrap_response(True, "Product fetched successfully", data=serializer.data, status_code=status.HTTP_200_OK)
+
         products = Product.objects.all()
         serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+        return wrap_response(True, "Products fetched successfully", data=serializer.data,status_code=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return wrap_response(True, "product_created", data=serializer.data, status_code=status.HTTP_201_CREATED)
+        return wrap_response(False, "Product creation failed", errors=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
-        """Partial update"""
         product = self.get_object(pk)
         if not product:
-            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = ProductSerializer(product, data=request.data, partial=True)  # partial update
+            return wrap_response(
+                False, "PRODUCT_NOT_FOUND", message="Product not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        serializer = ProductSerializer(product, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return wrap_response(True, "product_updated", data=serializer.data,status_code=status.HTTP_200_OK)
+        return wrap_response(False, "Product update failed", errors=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         product = self.get_object(pk)
         if not product:
-            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+            return wrap_response(
+                False, "PRODUCT_NOT_FOUND", message="Product not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
         product.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return wrap_response(True, "product_deleted", message="Product deleted successfully", status_code=status.HTTP_204_NO_CONTENT)
 
-# for Order Views for create order , update order , delete order , get order details and l
-    
+
+# Order Views
 class OrderAPIView(APIView):
     permission_classes = [IsAuthenticated, CustomerPermission]
 
@@ -79,36 +86,36 @@ class OrderAPIView(APIView):
         if order_id:
             order = self.get_object(order_id)
             if not order:
-                return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
-            return Response(OrderSerializer(order).data)
-        
+                return wrap_response(False, "Order not found", message="Order not found", status_code=status.HTTP_404_NOT_FOUND)
+            return wrap_response(True, "Order fetched successfully", data=OrderSerializer(order).data, status_code=status.HTTP_200_OK)
+
         orders = Order.objects.filter(customer=request.user)
-        return Response(OrderSerializer(orders, many=True).data)
+        return wrap_response(True, "orders_fetched", data=OrderSerializer(orders, many=True).data,status_code=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = OrderSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+            return wrap_response(True, "order_created", data=serializer.data, status_code=status.HTTP_201_CREATED)
+        return wrap_response(False, "Order creation failed", errors=serializer.errors,status_code=status.HTTP_400_BAD_REQUEST)
+
     def patch(self, request, order_id):
         order = self.get_object(order_id)
         if not order:
-            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+            return wrap_response(False, "order_not_found", message="Order not found", status_code=status.HTTP_404_NOT_FOUND)
 
         serializer = OrderSerializer(order, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             quantity = serializer.validated_data.get('quantity', order.quantity)
             product = serializer.validated_data.get('product', order.product)
             serializer.save(total_price=product.price * quantity)
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return wrap_response(True, "order_updated", data=serializer.data)
+        return wrap_response(False, "order_update_failed", errors=serializer.errors,status_code=status.HTTP_200_OK)
 
     def delete(self, request, order_id):
         order = self.get_object(order_id)
         if not order:
-            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+            return wrap_response(False, "order_not_found", message="Order not found", status_code=status.HTTP_404_NOT_FOUND)
         
         order.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)  # No message body for 204
+        return wrap_response(True, "order_deleted", message="Order deleted successfully", status_code=status.HTTP_204_NO_CONTENT)

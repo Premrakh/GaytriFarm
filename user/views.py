@@ -12,7 +12,6 @@ from gaytri_farm_app.utils import wrap_response
 from .service import generate_token, send_forgot_password_email, send_verification_email, unzip_token
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission,AdminorDistributorPermission,
-         DeliveryStaffPermission, CustomerPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 
