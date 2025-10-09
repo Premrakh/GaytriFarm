@@ -365,16 +365,26 @@ class CustomersView(APIView):
     ''' This view is for distributor to see their customers'''
     def get_permissions(self):
         if self.request.method == 'GET':
+<<<<<<< HEAD
+            return [IsAuthenticated(), IsVerified(),AdminorDistributorPermission()]
+=======
             return [IsAuthenticated(), IsVerified(), AdminOrDistributorPermission()]
+>>>>>>> main
         else:
             return [IsAuthenticated(), IsVerified(), DistributorPermission()]
 
     def get(self, request):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
+<<<<<<< HEAD
+        if user.role == User.DISTRIBUTOR:
+            if role_accepted in ["true", "false"]:
+                role_accepted = True if role_accepted == "true" else False
+=======
         if role_accepted in ["true", "false"]:
             role_accepted = True if role_accepted == "true" else False
             if user.role == User.DISTRIBUTOR:
+>>>>>>> main
                 customers = User.objects.filter(role=User.CUSTOMER, distributor=request.user, role_accepted=role_accepted).order_by('-created')
             else:
                 customers = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted).order_by('-created')
@@ -406,16 +416,26 @@ class DeliveryStaffView(APIView):
     ''' This view is for Admin/distributor to see their delivery staff'''
     def get_permissions(self):
         if self.request.method == 'GET':
+<<<<<<< HEAD
+            return [IsAuthenticated(), IsVerified(),AdminorDistributorPermission()]
+=======
             return [IsAuthenticated(), IsVerified(), AdminOrDistributorPermission()]
+>>>>>>> main
         else:
             return [IsAuthenticated(), IsVerified(), DistributorPermission()]
         
     def get(self, request):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
+<<<<<<< HEAD
+        if user.role == User.DISTRIBUTOR:
+            if role_accepted in ["true", "false"]:
+                role_accepted = True if role_accepted == "true" else False
+=======
         if role_accepted in ["true", "false"]:
             role_accepted = True if role_accepted == "true" else False
             if user.role == User.DISTRIBUTOR:
+>>>>>>> main
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor=user, role_accepted=role_accepted).order_by('-created')
             else:
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, role_accepted=role_accepted).order_by('-created')
@@ -443,7 +463,8 @@ class DistributorView(APIView):
         if role_accepted in ["true", "false"]:
             role_accepted = True if role_accepted == "true" else False
             users = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=role_accepted).order_by('-created')
-            return wrap_response(True, "distributors_list", data=EnrollUsersSerializer(users, many=True).data, message="Distributors fetched successfully.")
+            serializer = EnrollUsersSerializer(users, many=True)
+            return wrap_response(True, "distributors_list", data=serializer.data, message="Distributors fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
 
     def post(self, request):
@@ -458,6 +479,11 @@ class DistributorView(APIView):
             return wrap_response(True, "users_updated", message="Distributor approval status updated successfully.")    
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
 
+<<<<<<< HEAD
+
+# 1. Change Password
+=======
+>>>>>>> main
 class ChangePasswordView(APIView):
     """
     Allows authenticated users to change their password by providing the old password.
@@ -484,4 +510,3 @@ class ChangeNotificationModeView(APIView):
             message="Successfully changed notify mode.",
             data={"allow_notification":request.user.allow_notification},
         )
-

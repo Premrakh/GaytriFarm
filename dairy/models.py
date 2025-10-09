@@ -7,8 +7,7 @@ from user.models import User , Base
 class Product(Base):
     name = models.CharField(max_length=255, null=False, blank=False)
     description = models.TextField(null=True, blank=True)
-    price = models.PositiveIntegerField()
-
+    price = models.PositiveIntegerField()   
     def __str__(self):
         return self.name
     
