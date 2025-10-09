@@ -4,10 +4,10 @@ from .views import *
 
 urlpatterns = [
     # Product API (Admin only)
-    path('products/', ProductDetailAPIView.as_view(), name='product-list-create'),
-    path('products/<int:pk>/', ProductDetailAPIView.as_view(), name='product-detail'),
+    path('products/', ProductDetailAPIView.as_view()),
+    path('products/<int:pk>/', ProductDetailAPIView.as_view()),
     # Order API (Customer only)
-    path('orders/', OrderAPIView.as_view(), name='orders-api'),
-    path('orders/<uuid:order_id>/', OrderAPIView.as_view(), name='orders-detail'),
+    path('customers_orders/', CustomerOrderView.as_view()),
+    path('manage_orders/<int:pk>/', ManageOrderAPI.as_view()),
 
 ]
