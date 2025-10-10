@@ -10,6 +10,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrderCreateSerializer(serializers.ModelSerializer):
+    quantity = serializers.IntegerField(min_value=1,required=True)
     class Meta:
         model = Order
         fields = ['product', 'quantity']  
