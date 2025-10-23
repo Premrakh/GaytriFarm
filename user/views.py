@@ -8,7 +8,7 @@ from .models import User, EmailVerificationToken
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UserApprovalSerializer, UserRegisterSerializer, EmailVerificationSerializer, UserLoginSerializer,
         UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer, CustomerApprovalSerializer,ChangePasswordSerializer
                           )
-from gaytri_farm_app.utils import wrap_response
+from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import generate_token, send_forgot_password_email, send_verification_email, unzip_token
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission,
@@ -74,11 +74,14 @@ class SendEmailTokenView(APIView):
                 message="Email already verified."
             )
         token = str(random.randint(100000, 999999))
+        EmailVerificationToken.objects.filter(user=user).delete()
+
         verify_token = EmailVerificationToken.objects.create(
                 user=user,
                 token=token,
                 expiry_date=timezone.now() + timezone.timedelta(minutes=5),
             )
+        
         res = send_verification_email(user.email, token)
         if not res:
             verify_token.delete()
@@ -91,15 +94,10 @@ class EmailVerificationView(APIView):
         user = request.user
         serializer = EmailVerificationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            try:
-                user=User.objects.get(email=user.email)
-            except User.DoesNotExist:
-                return wrap_response(success=False, code="user_not_exist", message="User with this email does not exist.")
             if user.is_email_verified:
                 return wrap_response(success=False, code="email_already_verified", message="Email already verified.")
-            try:
-                verification_token=EmailVerificationToken.objects.get(user=user)
-            except EmailVerificationToken.DoesNotExist:
+            verification_token = get_object_or_none(EmailVerificationToken, user=user)
+            if not verification_token:
                 return wrap_response(success=False, code="token_not_exist", message="Verification token does not exist for the provided email.")
             if verification_token.token != serializer.validated_data["token"]:
                 return wrap_response(success=False, code="invalid_token", message="Invalid verification code.")
@@ -120,8 +118,7 @@ class EmailVerificationView(APIView):
             return wrap_response(
                 success=True,
                 code="email_verified",
-                message="Email verified successfully.",
-                status_code=status.HTTP_200_OK,
+                message="Email verified successfully."
             )
 
 class UserLoginView(APIView):
@@ -136,40 +133,30 @@ class UserLoginView(APIView):
                 message="Login failed. Please check your credentials.",
                 errors=serializer.errors,
             )
-        user_name = serializer.validated_data.get("user_name")
         email = serializer.validated_data.get("email")
         password = serializer.validated_data.get("password")
 
-        try:
-            if user_name:
-                user = User.objects.get(user_name=user_name)
-            else:
-                user = User.objects.get(email=email)
-            if user.check_password(password):
-                refresh = RefreshToken.for_user(user)
-                data = {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                    "user_id": user.user_id,
-                    "email_verified": user.is_email_verified,
-                    "role_accepted": user.role_accepted,
-                    "role": user.role,
-                    "is_superuser": user.is_superuser,
-                }
-                return wrap_response(
-                    success=True,
-                    code="login_successful",
-                    message="User logged in successfully.",
-                    data=data
-                )
-            else:
-                return wrap_response(success=False, code="invalid_credentials", message="Invalid credentials. Please try again.")
-        except User.DoesNotExist:
+        user = get_object_or_none(User, email=email)
+        if user and user.check_password(password):
+            refresh = RefreshToken.for_user(user)
+            data = {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user_id": user.user_id,
+                "email_verified": user.is_email_verified,
+                "role_accepted": user.role_accepted,
+                "role": user.role,
+                "is_superuser": user.is_superuser,
+            }
             return wrap_response(
-                success=False,
-                code="user_not_found",
-                message="User with the provided credentials does not exist.",
+                success=True,
+                code="login_successful",
+                message="User logged in successfully.",
+                data=data
             )
+        else:
+            return wrap_response(success=False, code="invalid_credentials", message="Invalid credentials. Please try again.")
+
 
 class UserLogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -214,6 +201,15 @@ class UserProfile(APIView):
 class UserRoleView(APIView):
     '''Select role for user like distributor, delivery staff, customer'''
     permission_classes = [IsAuthenticated, IsVerified]
+
+    def get(self, request, role):
+        valid_roles = User.ROLE_CHOICES
+        valid_roles = [r[0] for r in valid_roles]
+        if role not in valid_roles:
+            return wrap_response(False, "invalid_role", message=f"Role must be one of the following: {', '.join(valid_roles)}")
+        users = User.objects.filter(role=role).values("user_id","user_name")
+        return wrap_response(True, "users_retrieved", data=users, message=f"Users with role {role} retrieved successfully.")
+
     def post(self, request):
         user = request.user
         if user.role_accepted:
@@ -351,38 +347,30 @@ class ResetPasswordView(APIView):
             message="Password reset successful."
         )
         
-class RoleWiseUsersView(APIView):
-    permission_classes = [IsAuthenticated]
-    def get(self, request, role):
-        valid_roles = User.ROLE_CHOICES
-        valid_roles = [r[0] for r in valid_roles]
-        if role not in valid_roles:
-            return wrap_response(False, "invalid_role", message=f"Role must be one of the following: {', '.join(valid_roles)}")
-        users = User.objects.filter(role=role).values("user_id","user_name")
-        return wrap_response(True, "users_retrieved", data=users, message=f"Users with role {role} retrieved successfully.")
 
-class CustomersView(APIView):
+class CustomerView(APIView):
     ''' This view is for distributor to see their customers'''
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsAuthenticated(), IsVerified(), AdminOrDistributorPermission()]
+            return [IsAuthenticated(), IsVerified()]
         else:
             return [IsAuthenticated(), IsVerified(), DistributorPermission()]
 
     def get(self, request):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
-        if role_accepted in ["true", "false"]:
-            role_accepted = True if role_accepted == "true" else False
+        if role_accepted in ["accept", "pending"]:
+            role_accepted = True if role_accepted == "accept" else None
             if user.role == User.DISTRIBUTOR:
-                customers = User.objects.filter(role=User.CUSTOMER, distributor=request.user, role_accepted=role_accepted).order_by('-created')
+                customers = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted).order_by('-created')
+            elif user.role == User.DELIVERY_STAFF:
+                customers = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True).order_by('-created')
             else:
                 customers = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted).order_by('-created')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
-        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
-
-    
+        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
+  
     def post(self, request):
         serializer = CustomerApprovalSerializer(data=request.data)
         if serializer.is_valid():
@@ -413,15 +401,15 @@ class DeliveryStaffView(APIView):
     def get(self, request):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
-        if role_accepted in ["true", "false"]:
-            role_accepted = True if role_accepted == "true" else False
+        if role_accepted in ["accept", "pending"]:
+            role_accepted = True if role_accepted == "accept" else None
             if user.role == User.DISTRIBUTOR:
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor=user, role_accepted=role_accepted).order_by('-created')
             else:
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, role_accepted=role_accepted).order_by('-created')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "staff_list", data=serializer.data, message="Staff fetched successfully.")
-        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
+        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
     
     def post(self, request):
         serializer = UserApprovalSerializer(data=request.data)
@@ -440,12 +428,12 @@ class DistributorView(APIView):
     permission_classes = [IsAuthenticated, IsVerified, AdminUserPermission]
     def get(self, request):
         role_accepted = request.query_params.get('role_accepted')
-        if role_accepted in ["true", "false"]:
-            role_accepted = True if role_accepted == "true" else False
+        if role_accepted in ["accept", "pending"]:
+            role_accepted = True if role_accepted == "accept" else None
             users = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=role_accepted).order_by('-created')
             serializer = EnrollUsersSerializer(users, many=True)
             return wrap_response(True, "distributors_list", data=serializer.data, message="Distributors fetched successfully.")
-        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be true or false.")
+        return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
 
     def post(self, request):
         serializer = UserApprovalSerializer(data=request.data)
@@ -474,14 +462,3 @@ class ChangePasswordView(APIView):
             return wrap_response(success=True, code="password_changed", message="Password changed successfully.")
         return wrap_response(success=False, code="invalid_data", errors=serializer.errors)
 
-class ChangeNotificationModeView(APIView):
-    permission_classes=[IsAuthenticated,IsVerified,IsRegistered]
-    def get(self, request, *args, **kwargs):
-        request.user.allow_notification = not request.user.allow_notification
-        request.user.save()
-        return wrap_response(
-            success=True,
-            code='notify_mode_changed',
-            message="Successfully changed notify mode.",
-            data={"allow_notification":request.user.allow_notification},
-        )

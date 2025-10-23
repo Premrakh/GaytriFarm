@@ -23,18 +23,9 @@ class EmailVerificationSerializer(serializers.Serializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
-    user_name = serializers.CharField(required=False)
-    email = serializers.EmailField(required=False)
+    email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
 
-    def validate(self, data):
-        user_name = data.get('user_name', None)
-        email = data.get('email', None)
-
-        if not user_name and not email:
-            raise serializers.ValidationError("Either user_name or email must be provided.")
-
-        return data
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -80,6 +71,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         return value
 
 class AccountSerializer(serializers.ModelSerializer):
+    distributor = serializers.StringRelatedField(read_only=True)
     class Meta:
         model = User
         exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
@@ -115,4 +107,5 @@ class ChangePasswordSerializer(serializers.Serializer):
             )
         return value
 
-  
+
+

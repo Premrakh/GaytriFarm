@@ -2,6 +2,7 @@ from random import choices
 from uuid import uuid4
 from django.db import models
 from user.models import User , Base
+from django.utils import timezone
 # Create your models here.
 
 class Product(Base):
@@ -14,12 +15,12 @@ class Product(Base):
 class Order(Base):
     PENDING = 'pending'
     DELIVERED = 'delivered'
-    CANCELED = 'canceled'
+    CANCELED = 'cancel'
 
     ORDER_CHOICES = [
         (PENDING, 'Pending'),
         (DELIVERED, 'Delivered'),
-        (CANCELED, 'Canceled'),
+        (CANCELED, 'Cancel'),
     ]
 
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
@@ -27,8 +28,20 @@ class Order(Base):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     total_price = models.PositiveIntegerField()
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateField(default=timezone.now)
     status = models.CharField(max_length=50, choices=ORDER_CHOICES, default=PENDING)
 
     def __str__(self):
         return f"{self.id}"
+
+class UserBill(Base):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bills')
+    total_products = models.PositiveIntegerField(default=0)
+    total_amount = models.PositiveIntegerField(default=0)
+    pdf_file = models.FileField(upload_to='bills/', null=True, blank=True)
+    class Meta:
+        unique_together = ('user',)
+        ordering = ['-created']
+
+    def __str__(self):
+        return f"Bill for {self.user.user_name}"

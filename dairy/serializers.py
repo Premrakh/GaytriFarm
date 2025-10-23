@@ -1,6 +1,6 @@
 # shop/serializers.py
 from rest_framework import serializers
-from .models import Product, Order
+from .models import Product, Order, UserBill
 from user.models import User
 
 
@@ -11,9 +11,10 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class OrderCreateSerializer(serializers.ModelSerializer):
     quantity = serializers.IntegerField(min_value=1,required=True)
+    date = serializers.DateField(required=True)
     class Meta:
         model = Order
-        fields = ['product', 'quantity']  
+        fields = ['product', 'quantity','date']  
 
 class CustomerOrderSerializer(serializers.ModelSerializer):
     product = serializers.StringRelatedField()
@@ -30,3 +31,15 @@ class ManagerOrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ["id","customer","customer_address","delivery_staff",
                   "product","quantity","total_price","date","status"]
+
+
+class UserBillSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = UserBill
+        fields = ['id', 'user',  'total_products', 'total_amount', 'pdf_file', 'created']
+    
+class CustomerBillDetailSerializer(serializers.Serializer):
+    month = serializers.IntegerField()
+    year = serializers.IntegerField()
+    customer_id = serializers.UUIDField(required=False)

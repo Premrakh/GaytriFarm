@@ -15,3 +15,11 @@ def wrap_response(success, code, data=None, errors=None, status_code=status.HTTP
     if message:
         response_data["message"] = message
     return Response(response_data, status=status_code)
+
+
+
+def get_object_or_none(model, **kwargs):
+    try:
+        return model.objects.get(**kwargs)
+    except model.DoesNotExist:
+        return None

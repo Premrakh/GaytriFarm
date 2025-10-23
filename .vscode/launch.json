@@ -6,7 +6,18 @@
             "type": "debugpy",
             "request": "launch",
             "args": [
-                "runserver" , "8000"
+                "runserver" , "0.0.0.0:8000"
+            ],
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}\\manage.py"
+        },
+        {
+            "name": "Genrate-Bill cmd",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "generate_monthly_bills"
             ],
             "django": true,
             "autoStartBrowser": false,

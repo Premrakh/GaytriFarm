@@ -29,3 +29,6 @@ coverage.xml
 htmlcov/
 celerybeat-schedule
 celerybeat.pid
+
+# ================ media ========================
+bills/
