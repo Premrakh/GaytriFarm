@@ -5,7 +5,7 @@ from rest_framework import status
 import random, string
 from django.utils import timezone
 from .models import User, EmailVerificationToken
-from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UserApprovalSerializer, UserRegisterSerializer, EmailVerificationSerializer, UserLoginSerializer,
+from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, EmailVerificationSerializer, UserLoginSerializer,
         UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer, CustomerApprovalSerializer,ChangePasswordSerializer
                           )
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
@@ -252,6 +252,13 @@ class AccountView(APIView):
     def get(self,request):
         serializer = AccountSerializer(request.user)
         return wrap_response(True,code='account_retrieved', data=serializer.data)
+
+    def patch(self,request):
+        serializer = UpdateAccountSerializer(request.user, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
+        serializer.save()
+        return wrap_response(True, "account_updated", data=serializer.data, message="Account updated successfully.")
 
 
 class UpdateFCMTokenView(APIView):

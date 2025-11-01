@@ -24,6 +24,7 @@ class User(AbstractBaseUser, PermissionsMixin, Base):
     # ---------- IDENTIFICATION ----------
     user_id = models.UUIDField(primary_key=True, default=uuid4, editable=False, unique=True)
     email = models.EmailField(db_index=True, max_length=100, unique=True,null=True,blank=True)
+    mobile = models.CharField(max_length=12, unique=True, null=True, blank=True)
     user_name=models.CharField(max_length=128,unique=True,null=False,blank=False)
 
 

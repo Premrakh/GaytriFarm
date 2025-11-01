@@ -24,12 +24,13 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
 
 class ManagerOrderSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.user_name', read_only=True)
-    customer_address = serializers.CharField(source='customer.address', read_only=True)
+    customer_mobile = serializers.CharField(source='customer.mobile', read_only=True)
+    customer_address = serializers.CharField(source='customer.profile.address', read_only=True)
     product = serializers.StringRelatedField()
 
     class Meta:
         model = Order
-        fields = ["id","customer","customer_address","delivery_staff",
+        fields = ["id","customer", "customer_mobile", "customer_address","delivery_staff",
                   "product","quantity","total_price","date","status"]
 
 

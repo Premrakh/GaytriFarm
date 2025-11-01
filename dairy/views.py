@@ -70,14 +70,8 @@ class CustomerOrderView(APIView):
     ''' This view is for Customer to manage their orders'''
     permission_classes = [IsAuthenticated, IsVerified, CustomerPermission]
     
-    def get(self, request, pk=None):
-        product_id = request.query_params.get('product_id')
-        if pk:
-            order = get_object_or_none(Order, id=pk, customer=request.user)
-            if not order:
-                return wrap_response(False, "order_not_found", message="Order not found")
-            return wrap_response(True, "order_fetched", message="Order fetched successfully", data=CustomerOrderSerializer(order).data)
-        
+    def get(self, request):
+        product_id = request.query_params.get('product_id')       
         if not product_id:
             return wrap_response(False, "product_id_required", message="product_id query parameter is required")
         now = timezone.now()
@@ -169,22 +163,20 @@ class ManageOrderAPI(APIView):
             orders = orders.filter(product__id=product_id)
         
         # Optimize: fetch related objects in single query (both User FKs + Product FK)
-        orders = orders.select_related('customer', 'delivery_staff', 'product').order_by('created')
+        orders = orders.select_related('customer__profile',  'product').order_by('created')
         serializer = ManagerOrderSerializer(orders, many=True)
         return wrap_response(True, "orders_list", data=serializer.data, message="Orders fetched successfully.")
 
     def patch(self, request, pk):
         user = request.user
-        order = get_object_or_none(Order, pk=pk, delivery_staff=user)
-        if not order:
-            return wrap_response(False, "order_not_found", message="Order not found")
-        status_value = request.data.get("status")
-        if status_value not in [Order.DELIVERED, Order.CANCELED]:
+        status = request.data.get("status")
+        if status not in [Order.DELIVERED, Order.CANCELED]:
             return wrap_response(False, "invalid_data", message=f"status must be either {Order.DELIVERED} or {Order.CANCELED}.")
-        order.status = status_value
-        order.save()
-        serializer = ManagerOrderSerializer(order)
-        return wrap_response(True, "order_updated", data=serializer.data, message="Order status updated successfully.")
+        
+        updated = Order.objects.filter(pk=pk, delivery_staff=user).update(status=status)
+        if updated == 0:
+            return wrap_response(False, "order_not_found", message="Order not found")
+        return wrap_response(True, "order_updated", message="Order status updated successfully.")
 
 
 class CustomerMonthlyBillView(APIView):

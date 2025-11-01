@@ -76,6 +76,11 @@ class AccountSerializer(serializers.ModelSerializer):
         model = User
         exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
 
+class UpdateAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['user_name', 'mobile']
+
 class EnrollUsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
