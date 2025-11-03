@@ -38,7 +38,7 @@ class UserBillSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserBill
-        fields = ['id', 'user',  'total_products', 'total_amount', 'pdf_file', 'created']
+        fields = ['id', 'user',  'total_product', 'total_amount', 'pdf_file', 'created']
     
 class CustomerBillDetailSerializer(serializers.Serializer):
     month = serializers.IntegerField()

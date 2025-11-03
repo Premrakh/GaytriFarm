@@ -10,6 +10,7 @@ from gaytri_farm_app.custom_permission import (
 )
 from .models import *
 from .serializers import *
+from django.db.models import Sum , F
 
 # Product Views
 class ProductDetailAPIView(APIView):
@@ -199,34 +200,22 @@ class CustomerMonthlyBillView(APIView):
                 return wrap_response(False,"customer_not_found",message="Customer not found")
 
             orders = Order.objects.filter(
-                customer=customer,
-                status=Order.DELIVERED,
-                date__month=month,
-                date__year=year
+                customer=customer,status=Order.DELIVERED,
+                date__month=month,date__year=year
             ).select_related('product').values(
-                'product__name',
+                    product_name=F('product__name')
             ).annotate(
-                total_quantity=models.Sum('quantity'),
-                total_amount=models.Sum('total_price')
+                quantity=Sum('quantity'),
+                total_amount=Sum('total_price')
             )
             # Skip if no orders
-            if not orders:
-                return wrap_response(False,"no_orders",message=f'No delivered orders found for {month}/{year}')
-            
-            # Calculate totals
-            grand_total = sum(order['total_amount'] for order in orders)
-            total_items = sum(order['total_quantity'] for order in orders)
-            
-            # Build product-wise breakdown
-            product_breakdown = [
-                {
-                    "product_name": order['product__name'],
-                    "quantity": order['total_quantity'],
-                    "total_amount": order['total_amount']
-                }
-                for order in orders
-            ]
-            
+            product_breakdown = list(orders)
+
+            if not product_breakdown:
+                return wrap_response(False, "no_orders", message=f'No delivered orders found for {month}/{year}')
+
+            grand_total = sum(item['total_amount'] for item in product_breakdown)
+            total_items = sum(item['quantity'] for item in product_breakdown)
             # Create bill data structure
             bill_data = {
                 "customer_id": str(customer.user_id),
@@ -259,6 +248,6 @@ class MonthlyRevenueView(APIView):
             status=Order.DELIVERED,
             date__month=month,
             date__year=year
-        ).aggregate(total_revenue=models.Sum('total_price'))['total_revenue'] or 0
+        ).aggregate(total_revenue=Sum('total_price'))['total_revenue'] or 0
         
         return wrap_response(True, "monthly_revenue", data={"month": month, "year": year, "total_revenue": total_revenue}, message="Monthly revenue fetched successfully.")

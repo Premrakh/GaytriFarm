@@ -14,6 +14,7 @@ from pathlib import Path
 import dj_database_url
 import os
 from datetime import timedelta
+from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 environment=os.getenv('Environment','local')
@@ -28,7 +29,7 @@ SECRET_KEY = 'django-insecure-tpzb33%8@rfd4^mrv57wg--=tp8mu%bg-tskddz^z6q6@rhnzf
 
 if environment=='production':
     DEBUG = False
-    ALLOWED_HOSTS = []
+    ALLOWED_HOSTS = ['.onrender.com']
     CSRF_TRUSTED_ORIGINS = []
 else:
     DEBUG = True
@@ -90,10 +91,12 @@ if environment=='production':
     DATABASES = {
         'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
             }
+    CELERY_BROKER_URL = f"{os.getenv('REDIS_URL')}/0"
 else:
     DATABASES = {
     'default': dj_database_url.config(default='postgres://postgres:postgres@localhost:5432/gaytri_farm')
         }
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
 
 # Password validation
@@ -187,3 +190,13 @@ REST_FRAMEWORK = {
 
 
 FRONTEND_URL = os.getenv('FRONTEND_URL','http://localhost:3000')
+
+# CELERY_TIMEZONE = 'Asia/Kolkata'
+
+
+CELERY_BEAT_SCHEDULE = {
+    'generate_monthly_bills_task': {
+        'task': 'dairy.tasks.generate_monthly_bills_task',
+        'schedule': crontab(hour=5, minute=0),  # every day at 05:00
+    },
+}

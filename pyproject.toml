@@ -17,6 +17,8 @@ dependencies = [
     "firebase-admin (>=7.1.0,<8.0.0)",
     "cryptography (>=46.0.2,<47.0.0)",
     "reportlab (>=4.4.4,<5.0.0)",
+    "celery (>=5.5.3,<6.0.0)",
+    "redis (>=7.0.1,<8.0.0)",
 ]
 
 

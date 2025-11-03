@@ -36,7 +36,7 @@ class Order(Base):
 
 class UserBill(Base):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bills')
-    total_products = models.PositiveIntegerField(default=0)
+    total_product = models.PositiveIntegerField(default=0)
     total_amount = models.PositiveIntegerField(default=0)
     pdf_file = models.FileField(upload_to='bills/', null=True, blank=True)
     class Meta:

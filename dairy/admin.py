@@ -12,4 +12,4 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(UserBill)
 class UserBillAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'total_products', 'total_amount')
+    list_display = ('id', 'user', 'total_product', 'total_amount')

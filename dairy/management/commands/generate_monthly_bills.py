@@ -22,9 +22,7 @@ class Command(BaseCommand):
         now = timezone.now()
         target_month = now.month - 1 if now.month > 1 else 12
         target_year = now.year if now.month > 1 else now.year - 1
-    
-        send_email = not options['no_email']
-        
+            
         self.stdout.write(
             self.style.SUCCESS(
                 f'Starting bill generation for {target_month}/{target_year}'
@@ -108,14 +106,14 @@ class Command(BaseCommand):
                 user_bill, created = UserBill.objects.get_or_create(
                     user=customer,
                     defaults={
-                        'total_products': total_items,
+                        'total_product': total_items,
                         'total_amount': grand_total,
                     }
                 )
                 
                 if not created:
                     # Update existing bill
-                    user_bill.total_products = total_items
+                    user_bill.total_product = total_items
                     user_bill.total_amount = grand_total
                     user_bill.save()
                 
@@ -133,39 +131,7 @@ class Command(BaseCommand):
                         self.style.SUCCESS(f'✓ Updated bill for {customer.user_name}')
                     )
                 
-                # Send email if requested
-                # if send_email and customer.email:
-                #     try:
-                #         email = EmailMessage(
-                #             subject=f'Monthly Bill - {bill_data["billing_period"]["month_name"]} {target_year}',
-                #             body=f'Dear {customer.user_name},\n\n'
-                #                  f'Please find attached your monthly bill for {bill_data["billing_period"]["month_name"]} {target_year}.\n\n'
-                #                  f'Total Amount: ₹{grand_total}\n'
-                #                  f'Total Items: {total_items}\n\n'
-                #                  f'Thank you for your business!\n\n'
-                #                  f'Best regards,\n'
-                #                  f'Gaytri Farm',
-                #             from_email=settings.DEFAULT_FROM_EMAIL,
-                #             to=[customer.email]
-                #         )
-                        
-                #         # Attach PDF
-                #         user_bill.pdf_file.seek(0)
-                #         email.attach(pdf_filename, user_bill.pdf_file.read(), 'application/pdf')
-                #         email.send()
-                        
-                #         emails_sent += 1
-                #         self.stdout.write(
-                #             self.style.SUCCESS(f'✓ Email sent to {customer.email}')
-                #         )
-                #     except Exception as e:
-                #         error_msg = f"Email failed for {customer.user_name}: {str(e)}"
-                #         errors.append(error_msg)
-                #         self.stdout.write(self.style.ERROR(f'✗ {error_msg}'))
-                # elif send_email and not customer.email:
-                #     self.stdout.write(
-                #         self.style.WARNING(f'⚠ No email for {customer.user_name}')
-                #     )
+                
                 
             except Exception as e:
                 error_msg = f"Bill generation failed for {customer.user_name}: {str(e)}"
@@ -180,10 +146,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Bills Created: {bills_created}')
         self.stdout.write(f'Bills Updated: {bills_updated}')
         self.stdout.write(f'Total Bills: {bills_created + bills_updated}')
-        
-        if send_email:
-            self.stdout.write(f'Emails Sent: {emails_sent}')
-        
+
         if errors:
             self.stdout.write(self.style.ERROR(f'\nErrors: {len(errors)}'))
             for error in errors:
