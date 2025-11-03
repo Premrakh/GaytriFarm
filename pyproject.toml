@@ -1,27 +1,24 @@
-[project]
+[tool.poetry]
 name = "gaytrifarm"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Your Name",email = "you@example.com"}
-]
+authors = ["Your Name <you@example.com>"]
 readme = "README.md"
-requires-python = ">=3.12,<4"
 package-mode = false
-dependencies = [
-    "django (>=5.2.7,<6.0.0)",
-    "djangorestframework (>=3.16.1,<4.0.0)",
-    "dj-database-url (>=3.0.1,<4.0.0)",
-    "psycopg (>=3.2.10,<4.0.0)",
-    "psycopg2-binary (>=2.9.10,<3.0.0)",
-    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)",
-    "firebase-admin (>=7.1.0,<8.0.0)",
-    "cryptography (>=46.0.2,<47.0.0)",
-    "reportlab (>=4.4.4,<5.0.0)",
-    "celery (>=5.5.3,<6.0.0)",
-    "redis (>=7.0.1,<8.0.0)",
-]
 
+[tool.poetry.dependencies]
+python = ">=3.12,<4"
+django = ">=5.2.7,<6.0.0"
+djangorestframework = ">=3.16.1,<4.0.0"
+dj-database-url = ">=3.0.1,<4.0.0"
+psycopg = ">=3.2.10,<4.0.0"
+psycopg2-binary = ">=2.9.10,<3.0.0"
+djangorestframework-simplejwt = ">=5.5.1,<6.0.0"
+firebase-admin = ">=7.1.0,<8.0.0"
+cryptography = ">=46.0.2,<47.0.0"
+reportlab = ">=4.4.4,<5.0.0"
+celery = ">=5.5.3,<6.0.0"
+redis = ">=7.0.1,<8.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
