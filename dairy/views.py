@@ -7,7 +7,7 @@ from gaytri_farm_app.custom_permission import (
 )
 from .models import Product, Order
 from user.models import User
-from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer)
+from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer)
 from django.db.models import Sum , F
 
 # Product Views
@@ -79,8 +79,9 @@ class CustomerOrderView(APIView):
             product_id=product_id,
             created__year=now.year,
             created__month=now.month
-        ).order_by('created').values('product', 'date', 'status')
-        return wrap_response(True, "orders_fetched", message="Orders fetched successfully", data=orders)
+        ).order_by('created')
+        serializer = CustomerOrderSerializer(orders, many=True)
+        return wrap_response(True, "orders_fetched", message="Orders fetched successfully", data=serializer.data)
 
     def post(self, request):
         serializer = OrderCreateSerializer(data=request.data,many=True)
