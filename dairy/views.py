@@ -96,6 +96,7 @@ class CustomerOrderView(APIView):
                     delivery_staff=request.user.delivery_staff,
                     product=product,
                     quantity=quantity,
+                    date=order_data['date'],
                     total_price=product.price * quantity
                 )
                 order_instances.append(order_instance)
