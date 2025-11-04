@@ -1,15 +1,13 @@
-from itertools import product
 from django.utils import timezone
-from django.shortcuts import render
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from rest_framework.views import APIView
-from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (
     IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission
 )
-from .models import *
-from .serializers import *
+from .models import Product, Order
+from user.models import User
+from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer)
 from django.db.models import Sum , F
 
 # Product Views
@@ -82,23 +80,26 @@ class CustomerOrderView(APIView):
             created__year=now.year,
             created__month=now.month
         ).order_by('created').values('product', 'date', 'status')
-        # serializer = CustomerOrderSerializer(orders, many=True)
         return wrap_response(True, "orders_fetched", message="Orders fetched successfully", data=orders)
 
     def post(self, request):
-        serializer = OrderCreateSerializer(data=request.data)
+        serializer = OrderCreateSerializer(data=request.data,many=True)
         if serializer.is_valid():
-            product = serializer.validated_data['product']
-            quantity = serializer.validated_data['quantity']
-
-            Order.objects.create(
-                customer=request.user,
-                delivery_staff=request.user.delivery_staff,
-                product=product,
-                quantity=quantity,
-                total_price=product.price * quantity
-            )
-            return wrap_response(True, "order_created", message="Order created successfully", data=serializer.data)
+            orders_data = serializer.validated_data
+            order_instances = []
+            for order_data in orders_data:
+                product = order_data['product']
+                quantity = order_data['quantity']
+                order_instance = Order(
+                    customer=request.user,
+                    delivery_staff=request.user.delivery_staff,
+                    product=product,
+                    quantity=quantity,
+                    total_price=product.price * quantity
+                )
+                order_instances.append(order_instance)
+            Order.objects.bulk_create(order_instances)
+            return wrap_response(True, "orders_created", message="Orders created successfully", data=serializer.data)
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
 
     def put(self, request, pk):
