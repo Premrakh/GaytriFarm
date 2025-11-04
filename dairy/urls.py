@@ -8,6 +8,7 @@ urlpatterns = [
     path('products/<int:pk>/', ProductDetailAPIView.as_view()),
     # Order API (Customer only)
     path('customers_orders/', CustomerOrderView.as_view()),
+    path('customers_orders/<int:pk>/', CustomerOrderView.as_view()),
     path('manage_orders/', ManageOrderAPI.as_view()),
     path('manage_orders/<int:pk>/', ManageOrderAPI.as_view()),
     # Monthly Bill API
