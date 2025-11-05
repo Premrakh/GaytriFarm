@@ -17,7 +17,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         fields = ['product', 'quantity','date']  
 
 class CustomerOrderSerializer(serializers.ModelSerializer):
-    product = serializers.StringRelatedField()
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_id = serializers.CharField(source='product.id', read_only=True)
     class Meta:
         model = Order
         fields = "__all__"
