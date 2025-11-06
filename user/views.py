@@ -9,10 +9,9 @@ from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, Update
         UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer, CustomerApprovalSerializer,ChangePasswordSerializer
                           )
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
-from .service import generate_token, send_forgot_password_email, send_verification_email, unzip_token
+from .service import send_forgot_password_email, send_verification_email
 from rest_framework.permissions import IsAuthenticated
-from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission,
-         DeliveryStaffPermission, CustomerPermission
+from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -293,7 +292,7 @@ class ForgotPasswordView(APIView):
 
             )
         
-        reset_token = generate_token(user.user_id)
+        reset_token = str(random.randint(100000, 999999))
         res = send_forgot_password_email(
             user.email, reset_token
         )
@@ -318,20 +317,10 @@ class ResetPasswordView(APIView):
         serializer = ResetPasswordSerializer(data=request.data)
         if not serializer.is_valid():
             return wrap_response(False, "invalid_data",message="Invalid data", errors=serializer.errors)
-        auth_token = serializer.validated_data['token']
-        user_id, error =unzip_token(auth_token)
-        if user_id is None:
-            if error=="invalid_token":
-                message="Invalid token"
-            else:
-                message="Expired token. Please generate new reset password url."
-            return wrap_response(
-                success=False,
-                code=error,
-                message=message,
-            )
+        email = serializer.validated_data['email']
+        token = serializer.validated_data['token']
         try:
-            user = User.objects.get(user_id=user_id)
+            user = User.objects.get(email=email)
         except User.DoesNotExist:
             return wrap_response(
                 success=False,
@@ -339,7 +328,7 @@ class ResetPasswordView(APIView):
                 message="User not found.",
                 status_code=status.HTTP_404_NOT_FOUND
             )
-        if user.reset_password_token!=auth_token:
+        if user.reset_password_token!=token:
             return wrap_response(
                 success=False,
                 code="token_already_used",

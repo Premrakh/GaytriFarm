@@ -10,8 +10,12 @@ fernet=Fernet(key)
 
 def send_verification_email(email, token):
     try:
-        subject = 'Please Verify Your Email Address'
-        html_content=f"<strong>Verification Code: {token}</strong>"
+        subject = "Gaytri Farm - Verify Your Email Address"
+        html_content=f"""
+        Hi there,<br><br>
+        Thank you for Signup <b>Gaytri Farm</b><br><br>
+        Your email verification code is: <b>{token}</b>
+        """
         email = EmailMessage(subject, html_content, settings.DEFAULT_FROM_EMAIL, [email])
         email.content_subtype = 'html'
 
@@ -46,11 +50,8 @@ def send_forgot_password_email(email, token):
     try:
         subject = 'Reset Your Password'
         html_content = f"""
-        <p>You're receiving this email because you requested a password reset for your user account at Snowvue.</p>
-        <p>Please go to the following page and choose a new password: <a href="{settings.FRONTEND_URL}/auth?token={token}&type=reset-password&value={email}&via=email">Click_me</a></p>
-        <p>Your username, in case you’ve forgotten: {email}</p>
-        <p>Thanks for using our site!</p>
-        <p>The Snowvue team</p>
+        <p>Hello,</p>
+        <p>Your password reset token for GaytriFarm is : <b>{token}</b><p>
         """
         email = EmailMessage(subject, html_content, settings.DEFAULT_FROM_EMAIL, [email])
         email.content_subtype = 'html'

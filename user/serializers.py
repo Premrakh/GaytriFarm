@@ -52,9 +52,10 @@ class UserRoleSerializer(serializers.Serializer):
         return super().validate(attrs)
 
 class ResetPasswordSerializer(serializers.Serializer):
-    password = serializers.CharField(required=True,allow_null=False,allow_blank=False)
-    confirm_password = serializers.CharField(required=True,allow_null=False,allow_blank=False)
-    token = serializers.CharField(required=True,allow_null=False,allow_blank=False)
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+    token = serializers.CharField(required=True)
 
     def validate_password(self, value):
         pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
