@@ -8,6 +8,7 @@ from django.db import transaction
 from user.models import User
 from .models import Order
 from .models import UserBill
+from twilio.rest import Client
 from .pdf_generator import generate_bill_pdf
 
 logger = logging.getLogger(__name__)
@@ -93,3 +94,19 @@ def generate_monthly_bills_task(self):
     else:
         logger.info("✓ All bills generated successfully!")
 
+
+
+def send_bills_via_whatsapp():
+    account_sid = 'AC26610f13a08e3b009186451510156c33'
+    auth_token = 'ff1a0af8875e113819125a42f03fadfc'
+    client = Client(account_sid, auth_token)
+
+    message = client.messages.create(
+    from_='whatsapp:+14155238886',
+    # content_sid='HXb5b62575e6e4ff6129ad7c8efe1f983e',
+    # content_variables='{"1":"12/1","2":"3pm"}',
+    body="Here is your PDF file 📄",
+    to='whatsapp:+918980275047'
+    )
+
+    print(message.sid)

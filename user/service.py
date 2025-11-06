@@ -1,29 +1,46 @@
 from django.core.mail import EmailMessage
-from django.conf import settings
 from cryptography.fernet import Fernet
 import random
 from django.utils import timezone
-
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from django.conf import settings
 
 key=b'njVD0FDf5dqAJ7YREQRNVXRUQ39XmK29uIqz357Jj0s='
 fernet=Fernet(key)
 
-def send_verification_email(email, token):
-    try:
-        subject = "Gaytri Farm - Verify Your Email Address"
-        html_content=f"""
-        Hi there,<br><br>
-        Thank you for Signup <b>Gaytri Farm</b><br><br>
-        Your email verification code is: <b>{token}</b>
-        """
-        email = EmailMessage(subject, html_content, settings.DEFAULT_FROM_EMAIL, [email])
-        email.content_subtype = 'html'
+configuration = sib_api_v3_sdk.Configuration()
+configuration.api_key['api-key'] = settings.EMAIL_HOST_PASSWORD
 
-        res=email.send()
-        return res
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        return None
+api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+    sib_api_v3_sdk.ApiClient(configuration)
+)
+
+
+def send_verification_email(email, token):
+    subject = "Gaytri Farm - Verify Your Email Address"
+    html_content=f"""
+    Hi there,<br><br>
+    Thank you for Signup <b>Gaytri Farm</b><br><br>
+    Your email verification code is: <b>{token}</b>
+    """
+    sender = {"name": "Gaytri Farm", "email": settings.DEFAULT_FROM_EMAIL}
+    to = [{"email": email}]
+
+    email_data = {
+        "sender": sender,
+        "to": to,
+        "subject": subject,
+        "htmlContent": html_content
+    }
+    try:
+        api_instance.send_transac_email(email_data)
+        print(f"Verification email sent successfully to {email}")
+        return True
+    except ApiException as e:
+        print(f"Error sending Brevo email: {e}")
+        return False
+
     
 def generate_token(user_id):
     token =  str(random.randint(10000,99999)) + '--' +  str(timezone.now()+timezone.timedelta(minutes=5))  + '--' + str(user_id)
@@ -47,16 +64,25 @@ def unzip_token(token):
 
 
 def send_forgot_password_email(email, token):
+    subject = 'Gaytri Farm - Reset Your Password'
+    html_content = f"""
+    <p>Hello,</p>
+    <p>Your password reset token for GaytriFarm is : <b>{token}</b><p>
+    """
+    sender = {"name": "Gaytri Farm", "email": settings.DEFAULT_FROM_EMAIL}
+    to = [{"email": email}]
+
+    email_data = {
+        "sender": sender,
+        "to": to,
+        "subject": subject,
+        "htmlContent": html_content
+    }
     try:
-        subject = 'Reset Your Password'
-        html_content = f"""
-        <p>Hello,</p>
-        <p>Your password reset token for GaytriFarm is : <b>{token}</b><p>
-        """
-        email = EmailMessage(subject, html_content, settings.DEFAULT_FROM_EMAIL, [email])
-        email.content_subtype = 'html'
-        res=email.send()
-        return res
-    except:
-        return None
+        api_instance.send_transac_email(email_data)
+        print(f"Verification email sent successfully to {email}")
+        return True
+    except ApiException as e:
+        print(f"Error sending Brevo email: {e}")
+        return False
 
