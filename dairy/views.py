@@ -168,7 +168,7 @@ class ManageOrderAPI(APIView):
             orders = orders.filter(product__id=product_id)
         
         # Optimize: fetch related objects in single query (both User FKs + Product FK)
-        orders = orders.select_related('customer__profile',  'product').order_by('created')
+        orders = orders.select_related('customer__profile',  'product').order_by('customer__rank')
         serializer = ManagerOrderSerializer(orders, many=True)
         return wrap_response(True, "orders_list", data=serializer.data, message="Orders fetched successfully.")
 
