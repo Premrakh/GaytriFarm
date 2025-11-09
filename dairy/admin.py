@@ -8,7 +8,8 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'customer', 'product', 'quantity', 'status')
+    list_display = ('id', 'customer', 'product', 'quantity', 'status','date')
+    ordering = ('-date',)
 
 @admin.register(UserBill)
 class UserBillAdmin(admin.ModelAdmin):

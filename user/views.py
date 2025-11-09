@@ -1,20 +1,20 @@
 from email.mime import message
-import token
 from rest_framework.views import APIView
 from rest_framework import status
 import random, string
 from django.utils import timezone
 from .models import User, EmailVerificationToken
-from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, EmailVerificationSerializer, UserLoginSerializer,
-        UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer, CustomerApprovalSerializer,ChangePasswordSerializer
-                          )
+from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
+        EmailVerificationSerializer, UserLoginSerializer,UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,
+        CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import send_forgot_password_email, send_verification_email
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.db.models import Q
+from django.db import transaction
 # Create your views here.
 
 
@@ -458,3 +458,61 @@ class ChangePasswordView(APIView):
             return wrap_response(success=True, code="password_changed", message="Password changed successfully.")
         return wrap_response(success=False, code="invalid_data", errors=serializer.errors)
 
+
+# Distributor Add customers without email verification    
+class AddCustomer(APIView):
+    permission_classes = [IsAuthenticated, DistributorPermission]
+    def post(self, request):
+        serializer = AddCustomerSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data.get('email')
+            user_name = serializer.validated_data.get('user_name')
+            password = serializer.validated_data.get('password')
+            confirm_password = serializer.validated_data.get('confirm_password')
+            delivery_staff = serializer.validated_data.get('delivery_staff')
+            if password != confirm_password:
+                return wrap_response(False, "password_mismatch", message="Password and Confirm Password do not match.")
+            if User.objects.filter(Q(email=email) | Q(user_name=user_name)).exists():
+                return wrap_response(False, "user_exists", 
+                                        message="A user with this email and username already exists.", 
+                                        status_code=status.HTTP_400_BAD_REQUEST
+                                        )
+            user = User.objects.create_user(email=email, user_name=user_name, password=password, is_email_verified=True,
+                                            role=User.CUSTOMER, role_accepted=True, distributor=request.user,delivery_staff=delivery_staff)
+            return wrap_response(True, "user_added", message="User added successfully.")
+        return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
+
+
+class RouteSetupView(APIView):
+    permission_classes = [IsAuthenticated, DistributorPermission]
+    def post(self, request):
+        serializer = RouteSetupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
+        delivery_staff_id = serializer.validated_data["delivery_staff_id"]
+        customers_data = serializer.validated_data["customers"]
+
+        customer_ids = [c["id"] for c in customers_data]
+        existing_customers = list(
+            User.objects.filter(
+                user_id__in=customer_ids,
+                delivery_staff_id=delivery_staff_id,
+                role=User.CUSTOMER
+            )
+        )
+
+        if len(existing_customers) != len(customer_ids):
+            return wrap_response(False, "customers_not_found", message="One or more customers not found for this delivery staff.")
+
+        # map customer ranks
+        rank_map = {c["id"]: c["rank"] for c in customers_data}
+
+        # assign ranks in memory
+        for customer in existing_customers:
+            customer.rank = rank_map[customer.user_id]
+
+        # ✅ bulk update ranks in single query
+        with transaction.atomic():
+            User.objects.bulk_update(existing_customers, ["rank"])
+
+        return wrap_response(True, "customer_ranks_updated", message="Customer ranks updated successfully.")

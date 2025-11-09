@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ProductDetailAPIView, ProductDetailAPIView, CustomerOrderView, ManageOrderAPI, ManageOrderAPI, CustomerMonthlyBillView, MonthlyRevenueView
+from .views import ProductDetailAPIView, ProductDetailAPIView, CustomerOrderView, ManageOrderAPI, ManageOrderAPI, CustomerMonthlyBillView, MonthlyRevenueView,BulkOrderView
 
 
 urlpatterns = [
@@ -14,4 +14,5 @@ urlpatterns = [
     # Monthly Bill API
     path('customer_monthly_bill/', CustomerMonthlyBillView.as_view()),
     path('revenue/', MonthlyRevenueView.as_view()),
+    path('bulk_order/', BulkOrderView.as_view()),
 ]

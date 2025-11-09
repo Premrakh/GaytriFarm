@@ -33,7 +33,7 @@ class User(AbstractBaseUser, PermissionsMixin, Base):
     role_accepted = models.BooleanField(null=True, blank=True)
     distributor = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,related_name="distributor_users")
     delivery_staff = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,related_name="delivery_staff_users")
-
+    rank = models.PositiveIntegerField(default=0)
     # ---------- STATUS FLAGS ----------
     is_email_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

@@ -114,4 +114,19 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
 
+class AddCustomerSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=True)
+    user_name = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+    class Meta:
+        model = User
+        fields = ['email', 'user_name', 'password', 'confirm_password','delivery_staff']
 
+class CustomerRankSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=True)
+    rank = serializers.IntegerField(required=True, min_value=1)
+
+class RouteSetupSerializer(serializers.Serializer):
+    delivery_staff_id = serializers.IntegerField(required=True)
+    customers = CustomerRankSerializer(many=True)

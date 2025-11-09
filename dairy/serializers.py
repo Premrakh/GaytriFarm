@@ -44,4 +44,20 @@ class UserBillSerializer(serializers.ModelSerializer):
 class CustomerBillDetailSerializer(serializers.Serializer):
     month = serializers.IntegerField()
     year = serializers.IntegerField()
-    customer_id = serializers.UUIDField(required=False)
+    customer_id = serializers.IntegerField(required=False)
+
+class BulkOrderSerializer(serializers.ModelSerializer):
+    quantity = serializers.IntegerField(required=True)
+    month = serializers.IntegerField(required=True)
+    year = serializers.IntegerField(required=True)
+    type = serializers.ChoiceField(choices=[
+            ('every_day', 'every_day'),
+            ('alternate_day', 'alternate_day'),
+            ('one_two_cycle', 'one_two_cycle'),
+        ],
+        required=True
+    )
+
+    class Meta:
+        model = Order
+        fields = ['product', 'quantity', 'month', 'year', 'type']

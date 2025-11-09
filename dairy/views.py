@@ -7,9 +7,10 @@ from gaytri_farm_app.custom_permission import (
 )
 from .models import Product, Order
 from user.models import User
-from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer)
+from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,BulkOrderSerializer)
 from django.db.models import Sum , F
-
+from datetime import date, timedelta
+from calendar import monthrange
 # Product Views
 class ProductDetailAPIView(APIView):
     
@@ -171,13 +172,15 @@ class ManageOrderAPI(APIView):
         serializer = ManagerOrderSerializer(orders, many=True)
         return wrap_response(True, "orders_list", data=serializer.data, message="Orders fetched successfully.")
 
-    def patch(self, request, pk):
+    def patch(self, request):
         user = request.user
+        ids = request.data.get("ids")
         status = request.data.get("status")
         if status not in [Order.DELIVERED, Order.CANCELED]:
             return wrap_response(False, "invalid_data", message=f"status must be either {Order.DELIVERED} or {Order.CANCELED}.")
-        
-        updated = Order.objects.filter(pk=pk, delivery_staff=user).update(status=status)
+        if not ids or type(ids) != list:
+            return wrap_response(False, "invalid_data", message="ids must be a list.")
+        updated = Order.objects.filter(pk__in=ids, delivery_staff=user).update(status=status)
         if updated == 0:
             return wrap_response(False, "order_not_found", message="Order not found")
         return wrap_response(True, "order_updated", message="Order status updated successfully.")
@@ -254,3 +257,67 @@ class MonthlyRevenueView(APIView):
         ).aggregate(total_revenue=Sum('total_price'))['total_revenue'] or 0
         
         return wrap_response(True, "monthly_revenue", data={"month": month, "year": year, "total_revenue": total_revenue}, message="Monthly revenue fetched successfully.")
+
+
+class BulkOrderView(APIView):
+    permission_classes = [IsAuthenticated, CustomerPermission]
+
+    def post(self, request):
+        serializer = BulkOrderSerializer(data=request.data)
+        if not serializer.is_valid():
+            return wrap_response(False, "invalid_data", errors=serializer.errors)
+
+        data = serializer.validated_data
+        month = data['month']
+        year = data['year']
+        product = data['product']
+        base_quantity = data['quantity']
+        order_type = data['type']
+        customer = request.user
+        delivery_staff = request.user.delivery_staff
+       
+        # Calculate all dates in month
+        days_in_month = monthrange(year, month)[1]
+        start_date = date(year, month, 1)
+
+        orders_to_create = []
+        current_date = start_date
+
+        for day in range(days_in_month):
+            order_date = start_date + timedelta(days=day)
+
+            # Skip past dates
+            if order_date <= date.today():
+                continue
+
+            # Logic for each type
+            if order_type == 'every_day':
+                quantity = base_quantity
+
+            elif order_type == 'alternate_day':
+                # 0-based even dates: 1st, 3rd, 5th, ...
+                if day % 2 != 0:
+                    continue
+                quantity = base_quantity
+
+            elif order_type == 'one_two_cycle':
+                # alternate 2 and 1 quantities each day
+                quantity = 2 if day % 2 != 0 else 1
+
+            # Create Order instance (not saved yet)
+            orders_to_create.append(
+                Order(
+                    customer=customer,
+                    delivery_staff=delivery_staff,
+                    product=product,
+                    quantity=quantity,
+                    total_price=product.price * quantity,
+                    date=order_date
+                )
+            )
+
+        # Bulk create all orders
+        if orders_to_create:
+            Order.objects.bulk_create(orders_to_create)
+
+        return wrap_response(True, "orders_created", message=f"{len(orders_to_create)} orders created successfully for {month}/{year}", data=serializer.data)

@@ -4,7 +4,7 @@ from .models import User,UserProfile,EmailVerificationToken
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('user_id', 'user_name', 'role', 'role_accepted', 'distributor', 'delivery_staff')
+    list_display = ('user_id', 'rank', 'user_name', 'email', 'role', 'role_accepted', 'distributor', 'delivery_staff')
     search_fields = ('user_id', 'user_name', 'email')
     list_filter = ('role', 'distributor', 'delivery_staff')
     ordering = ('-created',)
