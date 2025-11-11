@@ -358,9 +358,9 @@ class CustomerView(APIView):
         if role_accepted in ["accept", "pending"]:
             role_accepted = True if role_accepted == "accept" else None
             if user.role == User.DISTRIBUTOR:
-                customers = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted).order_by('-created')
+                customers = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted).order_by('rank')
             elif user.role == User.DELIVERY_STAFF:
-                customers = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True).order_by('-created')
+                customers = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True).order_by('rank')
             else:
                 customers = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted).order_by('-created')
             serializer = EnrollUsersSerializer(customers, many=True)
