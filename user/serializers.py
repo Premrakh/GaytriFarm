@@ -85,7 +85,7 @@ class UpdateAccountSerializer(serializers.ModelSerializer):
 class EnrollUsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['user_id', 'user_name','email','role_accepted']
+        fields = ['user_id', 'distributor', 'user_name','email','role_accepted']
 
 class UserApprovalSerializer(serializers.Serializer):
     user_id  = serializers.UUIDField()
