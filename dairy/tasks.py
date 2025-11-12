@@ -10,11 +10,33 @@ from .models import Order
 from .models import UserBill
 from twilio.rest import Client
 from .pdf_generator import generate_bill_pdf
+import os
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+def send_bills_via_whatsapp(link):
+    account_sid = 'AC26610f13a08e3b009186451510156c33'
+    auth_token = 'ff1a0af8875e113819125a42f03fadfc'
+    client = Client(account_sid, auth_token)
+
+    body = (
+    "📅 *GayatriFarm - Monthly Bill*\n\n"
+    "{{link}}\n\n"
+    "⚠️ Note: This link will expire in *24 hours*, so please download your bill before it expires.\n\n"
+    "Thank you for staying with us! 💚"
+    )
+
+    message = client.messages.create(
+    from_='whatsapp:+14155238886',
+    # content_sid='HXb5b62575e6e4ff6129ad7c8efe1f983e',
+    # content_variables='{"1":"12/1","2":"3pm"}',
+    body=body.replace("{{link}}", link),
+    to='whatsapp:+918980275047'
+    )
+
 @shared_task()
-def generate_monthly_bills_task(self):
+def generate_monthly_bills_task():
     """
     Celery task to generate monthly bills for all customers.
     Same logic as the Django management command.
@@ -39,7 +61,7 @@ def generate_monthly_bills_task(self):
                     date__year=target_year,
                 )
                 .select_related("product")
-                .values(product_id=F("product__id"),product_name=F("product__name"),unit_price=F("product__price"),)
+                .values('quantity',product_name=F("product__name"),unit_price=F("product__price"))
                 .annotate(
                     total_quantity=Sum("quantity"),
                     total_amount=Sum("total_price"),
@@ -74,9 +96,16 @@ def generate_monthly_bills_task(self):
             logger.info(f"Generating PDF for {customer.user_name}...")
             pdf_content = generate_bill_pdf(bill_data)
             pdf_filename = f"bill_{customer.user_name}_{target_month}_{target_year}.pdf"
-
+            pdf_path = os.path.join("bills", pdf_filename)
+            # save this file to the media directory
+            with open(pdf_path, "wb") as pdf_file:
+                pdf_file.write(pdf_content.read())
             user_bills.append(UserBill(user=customer,total_product=total_items,total_amount=grand_total))
 
+            #send bill link to whatsapp
+            normalized_path = pdf_path.replace("\\", "/")
+            link = f"{settings.BACKEND_URL}/{normalized_path}"
+            send_bills_via_whatsapp(link)
         except Exception as e:
             error_msg = f"Bill generation failed for {customer.user_name}: {str(e)}"
             errors.append(error_msg)
@@ -94,19 +123,3 @@ def generate_monthly_bills_task(self):
     else:
         logger.info("✓ All bills generated successfully!")
 
-
-
-def send_bills_via_whatsapp():
-    account_sid = 'AC26610f13a08e3b009186451510156c33'
-    auth_token = 'ff1a0af8875e113819125a42f03fadfc'
-    client = Client(account_sid, auth_token)
-
-    message = client.messages.create(
-    from_='whatsapp:+14155238886',
-    # content_sid='HXb5b62575e6e4ff6129ad7c8efe1f983e',
-    # content_variables='{"1":"12/1","2":"3pm"}',
-    body="Here is your PDF file 📄",
-    to='whatsapp:+918980275047'
-    )
-
-    print(message.sid)

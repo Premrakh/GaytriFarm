@@ -40,7 +40,6 @@ class UserBill(Base):
     total_amount = models.PositiveIntegerField(default=0)
     pdf_file = models.FileField(upload_to='bills/', null=True, blank=True)
     class Meta:
-        unique_together = ('user',)
         ordering = ['-created']
 
     def __str__(self):

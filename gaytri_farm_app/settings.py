@@ -178,7 +178,7 @@ REST_FRAMEWORK = {
 
 
 FRONTEND_URL = os.getenv('FRONTEND_URL','http://localhost:3000')
-
+BACKEND_URL = os.getenv('BACKEND_URL','http://localhost:8000')
 # CELERY_TIMEZONE = 'Asia/Kolkata'
 
 
