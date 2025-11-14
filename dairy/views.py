@@ -148,7 +148,7 @@ class ManageOrderAPI(APIView):
         
         # Apply filters from query parameters
         # Date filter: today/tomorrow
-        day_filter = request.query_params.get('day')
+        day_filter = request.query_params.get('day_filter')
         if day_filter:
             today = timezone.now().date()
             if day_filter.lower() == 'today':
