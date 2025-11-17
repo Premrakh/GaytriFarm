@@ -5,7 +5,7 @@ import random, string
 from django.utils import timezone
 from .models import User, EmailVerificationToken
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
-        EmailVerificationSerializer, UserLoginSerializer,UserProfileSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,
+        EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,
         CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import send_forgot_password_email, send_verification_email
@@ -36,8 +36,20 @@ class UserRegistrationView(APIView):
                                     message="A user with this email and username already exists.", 
                                     status_code=status.HTTP_400_BAD_REQUEST
                                     )
-        user = User.objects.create_user(email=email, user_name=user_name, password=password)
-        user.save()
+        user = User.objects.create_user(
+                email=email,
+                user_name=user_name,
+                password=password,
+                mobile=serializer.validated_data.get('mobile'),
+                first_name=serializer.validated_data.get('first_name'),
+                last_name=serializer.validated_data.get('last_name'),
+                country=serializer.validated_data.get('country'),
+                state=serializer.validated_data.get('state'),
+                city=serializer.validated_data.get('city'),
+                address=serializer.validated_data.get('address'),
+                pin_code=serializer.validated_data.get('pin_code')
+            )
+        # user.save()
         # Generate a verification token 6 number code
         token = str(random.randint(100000, 999999))
         EmailVerificationToken.objects.create(
@@ -172,30 +184,6 @@ class UserLogoutView(APIView):
         except Exception as e:
             return wrap_response(False, "logout_failed", message="Logout failed. Please try again.", errors=str(e))
 
-class UserProfile(APIView):
-    permission_classes = [IsAuthenticated, IsVerified]
-    def get(self, request):
-        if not hasattr(request.user, 'profile'):
-            return wrap_response(False, "profile_not_found", message="User profile not found.")
-        serializer = UserProfileSerializer(request.user.profile)
-        return wrap_response(True, "profile_retrieved", data=serializer.data, message="User profile retrieved successfully.")
-
-    def post(self, request):
-        user = request.user
-        serializer = UserProfileSerializer(data=request.data)
-        if not serializer.is_valid():
-            return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
-        serializer.save(user=user)
-        return wrap_response(True, "profile_added", data=serializer.data, message="User profile added successfully.")
-
-    def patch(self, request):
-        if not hasattr(request.user, 'profile'):
-            return wrap_response(False, "profile_not_found", message="User profile not found.")
-        serializer = UserProfileSerializer(request.user.profile, data=request.data, partial=True)
-        if not serializer.is_valid():
-            return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
-        serializer.save()
-        return wrap_response(True, "profile_updated", data=serializer.data, message="User profile updated successfully.")
 
 class UserRoleView(APIView):
     '''Select role for user like distributor, delivery staff, customer'''
@@ -477,8 +465,24 @@ class AddCustomer(APIView):
                                         message="A user with this email and username already exists.", 
                                         status_code=status.HTTP_400_BAD_REQUEST
                                         )
-            user = User.objects.create_user(email=email, user_name=user_name, password=password, is_email_verified=True,
-                                            role=User.CUSTOMER, role_accepted=True, distributor=request.user,delivery_staff=delivery_staff)
+            user = User.objects.create_user(
+                    email=email,
+                    user_name=user_name,
+                    password=password,
+                    is_email_verified=True,
+                    role=User.CUSTOMER,
+                    role_accepted=True,
+                    distributor=request.user,
+                    delivery_staff=delivery_staff,
+                    mobile=serializer.validated_data.get('mobile'),
+                    first_name=serializer.validated_data.get('first_name'),
+                    last_name=serializer.validated_data.get('last_name'),
+                    country=serializer.validated_data.get('country'),
+                    state=serializer.validated_data.get('state'),
+                    city=serializer.validated_data.get('city'),
+                    address=serializer.validated_data.get('address'),
+                    pin_code=serializer.validated_data.get('pin_code')
+                )
             return wrap_response(True, "user_added", message="User added successfully.")
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
 
