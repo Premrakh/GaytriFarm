@@ -128,5 +128,15 @@ class CustomerRankSerializer(serializers.Serializer):
     rank = serializers.IntegerField(required=True, min_value=1)
 
 class RouteSetupSerializer(serializers.Serializer):
-    delivery_staff_id = serializers.IntegerField(required=True)
+    delivery_staff_id = serializers.IntegerField(required=False)
     customers = CustomerRankSerializer(many=True)
+
+    # validate delivery staff id if login user is distributor then requiered otherwise not 
+    def validate(self, attrs):
+        delivery_staff_id = attrs.get('delivery_staff_id')
+        user = self.context['request'].user
+        if user.role != User.DELIVERY_STAFF:
+            if not delivery_staff_id:
+                raise serializers.ValidationError("Delivery staff id is required.")
+        return super().validate(attrs)
+        

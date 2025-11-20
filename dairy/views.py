@@ -321,3 +321,15 @@ class BulkOrderView(APIView):
             Order.objects.bulk_create(orders_to_create)
 
         return wrap_response(True, "orders_created", message=f"{len(orders_to_create)} orders created successfully for {month}/{year}", data=serializer.data)
+
+
+class DeliveredOrdersCount(APIView):
+    permission_classes = [IsAuthenticated, DeliveryStaffPermission]
+    def get(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        if not start_date or not end_date:
+            return wrap_response(False, "start_end_date_required", message="start_date and end_date query parameters are required") 
+        user = request.user
+        orders_count = Order.objects.filter(delivery_staff=user, status=Order.DELIVERED, date__gte=start_date, date__lte=end_date).count()
+        return wrap_response(True, "orders_count", data=orders_count, message="Orders fetched successfully.")

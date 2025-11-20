@@ -8,7 +8,10 @@ from django.utils import timezone
 class Product(Base):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(null=True, blank=True)
-    price = models.PositiveIntegerField()   
+    price = models.PositiveIntegerField()  
+    distributor_price = models.PositiveIntegerField(null=True, blank=True)
+    image = models.ImageField(upload_to='products/', null=True, blank=True)
+    is_primary = models.BooleanField(default=False)
     def __str__(self):
         return self.name
     

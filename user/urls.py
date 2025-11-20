@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (UserRegistrationView, UserLoginView, EmailVerificationView, UserRoleView,
                     SendEmailTokenView, UserLogoutView, UserProfile,UpdateFCMTokenView,ForgotPasswordView,
                     ResetPasswordView, AccountView,DistributorView, CustomerView , DeliveryStaffView, DistributorView,
-                    ChangePasswordView,AddCustomer,RouteSetupView
+                    ChangePasswordView,AddCustomer,RouteSetupView,UpdateCustomerDelievery
                     )
 urlpatterns = [
     path('register/', UserRegistrationView.as_view()),
@@ -23,5 +23,6 @@ urlpatterns = [
     path('distributors/', DistributorView.as_view()),
     path('add_customer/', AddCustomer.as_view()),
     path('route_setup/', RouteSetupView.as_view()),
+    path('update_customer_delievery/', UpdateCustomerDelievery.as_view()),
 
 ]

@@ -484,12 +484,12 @@ class AddCustomer(APIView):
 
 
 class RouteSetupView(APIView):
-    permission_classes = [IsAuthenticated, DistributorPermission]
+    permission_classes = [IsAuthenticated, IsVerified]
     def post(self, request):
         serializer = RouteSetupSerializer(data=request.data)
         if not serializer.is_valid():
             return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
-        delivery_staff_id = serializer.validated_data["delivery_staff_id"]
+        delivery_staff_id = serializer.validated_data["delivery_staff_id"] if request.user.role != User.DELIVERY_STAFF else request.user.user_id
         customers_data = serializer.validated_data["customers"]
 
         customer_ids = [c["id"] for c in customers_data]
@@ -516,3 +516,19 @@ class RouteSetupView(APIView):
             User.objects.bulk_update(existing_customers, ["rank"])
 
         return wrap_response(True, "customer_ranks_updated", message="Customer ranks updated successfully.")
+
+class UpdateCustomerDelievery(APIView):
+    "Distributor & admin update customer delivery staff"
+
+    def patch(self,request):
+        delivery_staff_id = request.data.get('delivery_staff_id')
+        customer_id = request.data.get('customer_id')
+        if not delivery_staff_id or not customer_id:
+            return wrap_response(False, "invalid_data", message="Invalid data", errors="delivery_staff_id or customer_id is missing")
+        customer = User.objects.filter(user_id=customer_id, role=User.CUSTOMER).first()
+        if not customer:
+            return wrap_response(False, "customer_not_found", message="Customer not found")
+        customer.delivery_staff_id = delivery_staff_id
+        customer.rank = 0
+        customer.save()
+        return wrap_response(True, "customer_delivery_staff_updated", message="Customer delivery staff updated successfully")

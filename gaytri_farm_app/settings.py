@@ -36,7 +36,9 @@ else:
     ALLOWED_HOSTS = ["*"]
     CSRF_TRUSTED_ORIGINS = ["https://uncrumpling-desinential-maryanna.ngrok-free.dev"]
 
-
+# MEDIA Settings
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Application definition
 
 INSTALLED_APPS = [
@@ -49,6 +51,7 @@ INSTALLED_APPS = [
     'rest_framework',
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    'django_cleanup.apps.CleanupConfig',
     'user',
     'dairy',
 ]
@@ -63,6 +66,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+WHITENOISE_USE_FINDERS = True
 
 ROOT_URLCONF = 'gaytri_farm_app.urls'
 
