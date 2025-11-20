@@ -385,12 +385,15 @@ class DeliveryStaffView(APIView):
     def get(self, request):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
+        distributor_id = request.query_params.get('distributor_id')
         if role_accepted in ["accept", "pending"]:
             role_accepted = True if role_accepted == "accept" else None
             if user.role == User.DISTRIBUTOR:
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor=user, role_accepted=role_accepted).order_by('-created')
+            elif distributor_id:
+                customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor_id=distributor_id, role_accepted=role_accepted).order_by('-created')
             else:
-                customers = User.objects.filter(role=User.DELIVERY_STAFF, role_accepted=role_accepted).order_by('-created')
+                return wrap_response(False, "distributor_id_required", message=" distributor_id must be required for admin.")
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "staff_list", data=serializer.data, message="Staff fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
