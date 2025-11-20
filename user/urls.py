@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (UserRegistrationView, UserLoginView, EmailVerificationView, UserRoleView,
-                    SendEmailTokenView, UserLogoutView, UserProfile,UpdateFCMTokenView,ForgotPasswordView,
+                    SendEmailTokenView, UserLogoutView,UpdateFCMTokenView,ForgotPasswordView,
                     ResetPasswordView, AccountView,DistributorView, CustomerView , DeliveryStaffView, DistributorView,
                     ChangePasswordView,AddCustomer,RouteSetupView,UpdateCustomerDelievery
                     )
@@ -12,7 +12,6 @@ urlpatterns = [
     path('verify-email/', EmailVerificationView.as_view()),
     path('role/', UserRoleView.as_view()),
     path('role/<str:role>/', UserRoleView.as_view()),
-    path('profile/', UserProfile.as_view()),
     path('account/', AccountView.as_view()),
     path('update-fcm-token/', UpdateFCMTokenView.as_view()),
     path('forgot-password/', ForgotPasswordView.as_view()),

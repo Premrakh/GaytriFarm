@@ -26,7 +26,15 @@ class User(AbstractBaseUser, PermissionsMixin, Base):
     email = models.EmailField(db_index=True, max_length=100, unique=True,null=True,blank=True)
     mobile = models.CharField(max_length=12, unique=True, null=True, blank=True)
     user_name=models.CharField(max_length=128,unique=True,null=False,blank=False)
+    first_name = models.CharField(max_length=128, null=True, blank=True)
+    last_name = models.CharField(max_length=128, null=True, blank=True)
 
+    # ---------- ADDRESS ----------
+    country = models.CharField(max_length=128, default="India")
+    state = models.CharField(max_length=128, default="Gujarat")
+    city = models.CharField(max_length=128, null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
+    pin_code = models.IntegerField(null=True, blank=True)
 
     # ---------- ROLE MANAGEMENT ----------
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, null=True, blank=True)
@@ -63,17 +71,6 @@ class EmailVerificationToken(Base):
 
     def __str__(self):
         return str(self.user.email)
-
-class UserProfile(Base):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    first_name = models.CharField(max_length=128, null=True, blank=True)
-    last_name = models.CharField(max_length=128, null=True, blank=True)
-    country = models.CharField(max_length=128, default="India")
-    state = models.CharField(max_length=128, default="Gujarat")
-    city = models.CharField(max_length=128, null=True, blank=True)
-    address = models.TextField(null=True, blank=True)
-    pin_code = models.IntegerField(null=True,blank=True)
-
 
 class Notification(Base):
     id = models.AutoField(primary_key=True)

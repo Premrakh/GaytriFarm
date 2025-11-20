@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, UserProfile
+from .models import User
 import re
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -9,7 +9,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(required=True)
     class Meta:
         model = User
-        fields = ['email', 'user_name', 'password', 'confirm_password']
+        fields = ['email', 'mobile', 'user_name', 'first_name', 'last_name', 'country', 'state', 'city', 'address', 'pin_code', 'password', 'confirm_password']
     
     def validate_password(self, value):
         pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
@@ -26,11 +26,6 @@ class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
 
-
-class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserProfile
-        exclude = ['user']
 
 class UserRoleSerializer(serializers.Serializer):
     role = serializers.CharField(required=True)
@@ -80,7 +75,8 @@ class AccountSerializer(serializers.ModelSerializer):
 class UpdateAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['user_name', 'mobile']
+        fields = ['user_name', 'mobile','first_name','last_name',
+                 'country','state','city','address','pin_code']
 
 class EnrollUsersSerializer(serializers.ModelSerializer):
     class Meta:
@@ -121,7 +117,8 @@ class AddCustomerSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(required=True)
     class Meta:
         model = User
-        fields = ['email', 'user_name', 'password', 'confirm_password','delivery_staff']
+        fields = ['email', 'user_name', 'password', 'confirm_password','delivery_staff','first_name','last_name',
+                 'country','state','city','address','pin_code','mobile']
 
 class CustomerRankSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)
