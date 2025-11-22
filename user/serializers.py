@@ -79,9 +79,12 @@ class UpdateAccountSerializer(serializers.ModelSerializer):
                  'country','state','city','address','pin_code']
 
 class EnrollUsersSerializer(serializers.ModelSerializer):
+    delivery_staff_name = serializers.CharField(source='delivery_staff.user_name', read_only=True)
     class Meta:
         model = User
-        exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
+        # exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
+        fields = ['user_id','user_name','email','mobile', 'delivery_staff','delivery_staff_name' ,'first_name','last_name',
+                 'country','state','city','address','pin_code']
 
 class UserApprovalSerializer(serializers.Serializer):
     user_id  = serializers.UUIDField()

@@ -346,11 +346,11 @@ class CustomerView(APIView):
         if role_accepted in ["accept", "pending"]:
             role_accepted = True if role_accepted == "accept" else None
             if user.role == User.DISTRIBUTOR:
-                customers = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted).order_by('rank')
+                customers = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted).select_related('delivery_staff').order_by('rank')
             elif user.role == User.DELIVERY_STAFF:
-                customers = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True).order_by('rank')
+                customers = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True).select_related('delivery_staff').order_by('rank')
             else:
-                customers = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted).order_by('-created')
+                customers = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted).select_related('delivery_staff').order_by('-created')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
