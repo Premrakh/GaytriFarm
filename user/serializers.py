@@ -81,7 +81,7 @@ class UpdateAccountSerializer(serializers.ModelSerializer):
 class EnrollUsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['user_id', 'delivery_staff', 'user_name','email','role_accepted']
+        exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
 
 class UserApprovalSerializer(serializers.Serializer):
     user_id  = serializers.UUIDField()
