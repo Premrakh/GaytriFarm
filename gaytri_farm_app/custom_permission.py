@@ -103,3 +103,18 @@ class AdminOrDistributorPermission(BasePermission):
             },
             "message": "User is neither a distributor nor an admin."
         })
+
+class DistributorOrStaffPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.role in [User.DISTRIBUTOR, User.DELIVERY_STAFF] and request.user.role_accepted:
+                return True
+        if request.user.is_superuser:
+                return True
+        raise PermissionDenied(detail={
+            "success": False,
+            "code": "user_not_distributor_or_admin",
+            "data":{
+                "role":request.user.role,
+            },
+            "message": "User is neither a distributor nor an admin."
+        })

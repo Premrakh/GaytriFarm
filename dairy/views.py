@@ -3,7 +3,7 @@ from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (
-    IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission
+    IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission, DistributorOrStaffPermission
 )
 from .models import Product, Order
 from user.models import User
@@ -131,16 +131,19 @@ class ManageOrderAPI(APIView):
         if self.request.method == 'GET':
             return [IsAuthenticated(), IsVerified()]
         else:
-            return [IsAuthenticated(), IsVerified(), DeliveryStaffPermission()]
+            return [IsAuthenticated(), IsVerified(), DistributorOrStaffPermission()]
 
     def get(self, request):
         user = request.user
-        
+        delivery_staff_id = request.query_params.get('delivery_staff_id')
         # Base query based on user role
         if user.role == User.DELIVERY_STAFF:
             orders = Order.objects.filter(delivery_staff=user)
         elif user.role == User.DISTRIBUTOR:
-            orders = Order.objects.filter(customer__distributor=user)
+            if delivery_staff_id:
+                orders = Order.objects.filter(customer__distributor=user, customer__delivery_staff_id=delivery_staff_id)
+            else:
+                orders = Order.objects.filter(customer__distributor=user)
         elif user.is_superuser:
             orders = Order.objects.all()
         else:
