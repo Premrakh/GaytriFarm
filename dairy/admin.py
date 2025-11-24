@@ -10,6 +10,7 @@ class ProductAdmin(admin.ModelAdmin):
 class OrderAdmin(admin.ModelAdmin):
     list_display = ('id', 'customer', 'product', 'quantity', 'status','date')
     ordering = ('-date',)
+    list_filter = ('customer', 'product', 'status')
 
 @admin.register(UserBill)
 class UserBillAdmin(admin.ModelAdmin):
