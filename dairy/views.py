@@ -72,15 +72,21 @@ class CustomerOrderView(APIView):
     
     def get(self, request):
         product_id = request.query_params.get('product_id')       
-        if not product_id:
-            return wrap_response(False, "product_id_required", message="product_id query parameter is required")
         now = timezone.now()
-        orders = Order.objects.filter(
-            customer=request.user,
-            product_id=product_id,
-            created__year=now.year,
-            created__month=now.month
-        ).order_by('created')
+        if product_id:
+            orders = Order.objects.filter(
+                customer=request.user,
+                product_id=product_id,
+                created__year=now.year,
+                created__month=now.month
+            ).order_by('created')
+        else:
+            orders = Order.objects.filter(
+                customer=request.user,
+                product__is_primary=True,
+                created__year=now.year,
+                created__month=now.month
+            ).order_by('created')
         serializer = CustomerOrderSerializer(orders, many=True)
         return wrap_response(True, "orders_fetched", message="Orders fetched successfully", data=serializer.data)
 
