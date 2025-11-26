@@ -4,6 +4,7 @@ from rest_framework import status
 import random, string
 from django.utils import timezone
 from .models import User, EmailVerificationToken
+from dairy.models import Order
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
         EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,
         CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer)
@@ -13,8 +14,9 @@ from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import Q
+from django.db.models import OuterRef, Exists, Q
 from django.db import transaction
+from dateutil.relativedelta import relativedelta
 # Create your views here.
 
 
@@ -344,13 +346,25 @@ class CustomerView(APIView):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
         if role_accepted in ["accept", "pending"]:
+            today = timezone.now().date()
+            next_month_start = today.replace(day=1) + relativedelta(months=1)
+            next_month_end = next_month_start + relativedelta(day=31) 
             role_accepted = True if role_accepted == "accept" else None
+            # Subquery: check if order exists for that customer
+            next_month_order_exists = Exists(
+                Order.objects.filter(
+                    customer=OuterRef("pk"),
+                    date__range=(next_month_start, next_month_end)
+                )
+            )
+
             if user.role == User.DISTRIBUTOR:
-                customers = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted).select_related('delivery_staff').order_by('rank')
+                queryset = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted)
             elif user.role == User.DELIVERY_STAFF:
-                customers = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True).select_related('delivery_staff').order_by('rank')
+                queryset = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True)
             else:
-                customers = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted).select_related('delivery_staff').order_by('-created')
+                queryset = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted)
+            customers = queryset.annotate(is_next_order = next_month_order_exists).select_related('delivery_staff').order_by('rank')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
@@ -493,7 +507,7 @@ class AddCustomer(APIView):
 class RouteSetupView(APIView):
     permission_classes = [IsAuthenticated, IsVerified]
     def post(self, request):
-        serializer = RouteSetupSerializer(data=request.data)
+        serializer = RouteSetupSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
         delivery_staff_id = serializer.validated_data["delivery_staff_id"] if request.user.role != User.DELIVERY_STAFF else request.user.user_id
@@ -526,7 +540,7 @@ class RouteSetupView(APIView):
 
 class UpdateCustomerDelievery(APIView):
     "Distributor & admin update customer delivery staff"
-
+    permission_classes = [IsAuthenticated, IsVerified, AdminOrDistributorPermission]
     def patch(self,request):
         delivery_staff_id = request.data.get('delivery_staff_id')
         customer_id = request.data.get('customer_id')
@@ -539,3 +553,88 @@ class UpdateCustomerDelievery(APIView):
         customer.rank = 0
         customer.save()
         return wrap_response(True, "customer_delivery_staff_updated", message="Customer delivery staff updated successfully")
+
+class ActiveDeactiveCustomer(APIView):
+    permission_classes = [IsAuthenticated, IsVerified, AdminOrDistributorPermission]
+
+    def post(self,request):
+        active = request.data.get('active')
+        if type(active) != bool:
+            return wrap_response(False, "active_invalid", message="active must be boolean value")
+        customer_id = request.data.get('customer_id')
+        updated = User.objects.filter(user_id=customer_id).update(is_active=active)
+        flag = 'activate' if active else 'deactivate'
+        if not updated:
+            return wrap_response(False, "customer_not_found", message="Customer Not found")
+        return wrap_response(True, f"customer_{flag}", message=f"Customer {flag} successfully")
+
+    def get(self,request):
+        customers = User.objects.filter(is_active=False, role = User.CUSTOMER)
+        serializer = EnrollUsersSerializer(customers, many=True)
+        return wrap_response(True, code='customer_retrieve', data=serializer.data)
+
+class ActiveDeactivateDeliveryStaff(APIView):
+    permission_classes = [IsAuthenticated, DistributorPermission]
+
+    def post(self, request):
+        distributor = request.user
+        active = request.data.get("active")
+        staff_id = request.data.get("delivery_staff_id")          # Staff to deactivate
+        new_staff_id = request.data.get("new_delivery_staff_id")  # New staff for reassigning customers
+        
+        if type(active) != bool:
+            return wrap_response(False, "active_invalid", message="active must be boolean value")
+        
+        if active:
+            updated = User.objects.filter(user_id=staff_id).update(is_active=True)
+            if not updated:
+                return wrap_response(False, "delivery_staff_not_found", message="delivery_staff not found")
+            return wrap_response(True, f"customer_activate", message=f"Customer activate successfully")
+
+        
+        # Validation 1: Staff IDs must be provided
+        if not staff_id or not new_staff_id:
+            return wrap_response(False, "missing_fields",
+                                 message="delivery_staff_id and new_delivery_staff_id are required.")
+
+
+        if old_staff.user_id == new_staff.user_id:
+            return wrap_response(False, "same_staff",
+                                 message="Old and new delivery staff cannot be same.")
+
+        staff = User.objects.filter(
+            user_id__in=[staff_id,new_staff_id],
+            role=User.DELIVERY_STAFF,
+            distributor=distributor,
+            is_active=True
+        )
+        if len(staff) != 2:
+            return wrap_response(False, code='missing_data', message='delivery_staff_id and new_delivery_staff_id is Invalid')
+
+        # Cannot self assign (same staff)
+
+        # ---------------------------------------------------
+        # Reassign customers in ONE bulk update (Optimized)
+        # ---------------------------------------------------
+        User.objects.filter(
+            role=User.CUSTOMER,
+            delivery_staff=old_staff,
+            distributor=distributor
+        ).update(delivery_staff=new_staff)
+
+        # ---------------------------------------------------
+        # Deactivate old staff
+        # ---------------------------------------------------
+        old_staff.is_active = False
+        old_staff.save(update_fields=["is_active"])
+
+        return wrap_response(
+            True,
+            "delivery_staff_deactivated",
+            message=f"Delivery staff '{old_staff.user_name}' deactivated and customers reassigned to '{new_staff.user_name}'."
+        )
+
+    def get(self,request):
+        customers = User.objects.filter(is_active=False, role = User.DELIVERY_STAFF)
+        serializer = EnrollUsersSerializer(customers, many=True)
+        return wrap_response(True, code='customer_retrieve', data=serializer.data)

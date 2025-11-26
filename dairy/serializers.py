@@ -46,8 +46,6 @@ class CustomerBillDetailSerializer(serializers.Serializer):
 
 class BulkOrderSerializer(serializers.ModelSerializer):
     quantity = serializers.IntegerField(required=True)
-    month = serializers.IntegerField(required=True)
-    year = serializers.IntegerField(required=True)
     type = serializers.ChoiceField(choices=[
             ('every_day', 'every_day'),
             ('alternate_day', 'alternate_day'),
@@ -58,4 +56,4 @@ class BulkOrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['product', 'quantity', 'month', 'year', 'type']
+        fields = ['product', 'quantity',  'type']

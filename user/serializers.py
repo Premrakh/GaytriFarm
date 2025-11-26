@@ -80,11 +80,12 @@ class UpdateAccountSerializer(serializers.ModelSerializer):
 
 class EnrollUsersSerializer(serializers.ModelSerializer):
     delivery_staff_name = serializers.CharField(source='delivery_staff.user_name', read_only=True)
+    is_next_order = serializers.BooleanField(read_only=True)
     class Meta:
         model = User
         # exclude = ['password' , 'reset_password_token', 'fcm_token' , 'groups', 'user_permissions']
         fields = ['user_id','user_name','email','mobile', 'delivery_staff','delivery_staff_name' ,'first_name','last_name',
-                 'country','state','city','address','pin_code']
+                 'country','state','city','address','pin_code','is_next_order','is_active']
 
 class UserApprovalSerializer(serializers.Serializer):
     user_id  = serializers.UUIDField()

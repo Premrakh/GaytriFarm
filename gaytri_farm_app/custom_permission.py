@@ -6,16 +6,18 @@ from user.models import User
 
 class IsVerified(BasePermission):
     def has_permission(self, request, view):
-        if request.user.is_email_verified:
+        user = request.user 
+        if user.is_email_verified and user.is_active:
             return True
         else:
             raise PermissionDenied(detail={
                 "success": False,
                 "code": "email_not_verified",
                 "data":{
-                    "is_email_verified":False
+                    "is_email_verified":user.is_email_verified,
+                    'is_active': user.is_active
                 },
-                "message": "Email not verified."
+                "message": "Email not verified. or User deactivate"
             })
 
 

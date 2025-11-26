@@ -9,7 +9,7 @@ from .models import Product, Order
 from user.models import User
 from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,BulkOrderSerializer)
 from django.db.models import Sum , F
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from calendar import monthrange
 # Product Views
 class ProductDetailAPIView(APIView):
@@ -269,7 +269,7 @@ class MonthlyRevenueView(APIView):
 
 
 class BulkOrderView(APIView):
-    permission_classes = [IsAuthenticated, CustomerPermission]
+    permission_classes = [IsAuthenticated, IsVerified, CustomerPermission]
 
     def post(self, request):
         serializer = BulkOrderSerializer(data=request.data)
@@ -277,68 +277,106 @@ class BulkOrderView(APIView):
             return wrap_response(False, "invalid_data", errors=serializer.errors)
 
         data = serializer.validated_data
-        month = data['month']
-        year = data['year']
         product = data['product']
         base_quantity = data['quantity']
         order_type = data['type']
         customer = request.user
-        delivery_staff = request.user.delivery_staff
-       
-        # Calculate all dates in month
-        days_in_month = monthrange(year, month)[1]
-        start_date = date(year, month, 1)
+        delivery_staff = getattr(request.user, "delivery_staff", None)
 
+        today = date.today()
+        start_date = today + timedelta(days=1)  # start from tomorrow
         orders_to_create = []
-        current_date = start_date
 
-        for day in range(days_in_month):
-            order_date = start_date + timedelta(days=day)
+        # create orders for upcoming 3 months: remainder of this month (from tomorrow) + next 2 months
+        for month_offset in range(3):
+            # compute year and month for this offset
+            month_num = start_date.month + month_offset
+            year = start_date.year + (month_num - 1) // 12
+            month = ((month_num - 1) % 12) + 1
 
-            # Skip past dates
-            if order_date <= date.today():
-                continue
+            last_day = monthrange(year, month)[1]
+            # determine starting day for the first month (start_date.day), else 1
+            start_day = start_date.day if month_offset == 0 else 1
 
-            # Logic for each type
-            if order_type == 'every_day':
-                quantity = base_quantity
-
-            elif order_type == 'alternate_day':
-                # 0-based even dates: 1st, 3rd, 5th, ...
-                if day % 2 != 0:
+            for day in range(start_day, last_day + 1):
+                order_date = date(year, month, day)
+                # skip any past dates just in case
+                if order_date <= today:
                     continue
-                quantity = base_quantity
 
-            elif order_type == 'one_two_cycle':
-                # alternate 2 and 1 quantities each day
-                quantity = 2 if day % 2 != 0 else 1
+                # Use 0-based index within month for patterns
+                idx = day - 1
 
-            # Create Order instance (not saved yet)
-            orders_to_create.append(
-                Order(
-                    customer=customer,
-                    delivery_staff=delivery_staff,
-                    product=product,
-                    quantity=quantity,
-                    total_price=product.price * quantity,
-                    date=order_date
+                if order_type == 'every_day':
+                    quantity = base_quantity
+                elif order_type == 'alternate_day':
+                    # keep 1st,3rd,5th... (idx 0,2,4 => even idx)
+                    if idx % 2 != 0:
+                        continue
+                    quantity = base_quantity
+                elif order_type == 'one_two_cycle':
+                    # alternate 1 and 2 quantities each day: use idx parity
+                    quantity = 2 if idx % 2 != 0 else 1
+                else:
+                    # unknown type skip
+                    continue
+
+                orders_to_create.append(
+                    Order(
+                        customer=customer,
+                        delivery_staff=delivery_staff,
+                        product=product,
+                        quantity=quantity,
+                        total_price=product.price * quantity,
+                        date=order_date
+                    )
                 )
-            )
 
         # Bulk create all orders
         if orders_to_create:
             Order.objects.bulk_create(orders_to_create)
 
-        return wrap_response(True, "orders_created", message=f"{len(orders_to_create)} orders created successfully for {month}/{year}", data=serializer.data)
+        return wrap_response(
+            True,
+            "orders_created",
+            message=f"{len(orders_to_create)} orders created successfully for upcoming 3 months",
+            data=serializer.data
+        )
 
+    def delete(self,request):
+        ids = request.data.get("ids")
+        if ids:
+            if not isinstance(ids, list):
+                return wrap_response(False, "invalid_id", message="ids must be a list.")
+            
+            # delete orders from given ids
+            deleted_count, _ = Order.objects.filter(customer=request.user,id__in=ids).delete()
+            return wrap_response(True, "deleted", message=f"{deleted_count} orders deleted.")
+    
+        # CASE 2: No ids → delete orders where date is minimum next day
+        today = timezone.now().date()
+        next_day = today + timedelta(days=1)
+
+        # only delete orders where date == next_day
+        deleted_count, _ = Order.objects.filter(customer=request.user,date__gte=next_day).delete()
+
+        return wrap_response(True, "deleted", message=f"{deleted_count} orders deleted for next day.")
+        
 
 class DeliveredOrdersCount(APIView):
-    permission_classes = [IsAuthenticated, DeliveryStaffPermission]
+    permission_classes = [IsAuthenticated,IsVerified, DeliveryStaffPermission]
     def get(self, request):
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
         if not start_date or not end_date:
             return wrap_response(False, "start_end_date_required", message="start_date and end_date query parameters are required") 
         user = request.user
-        orders_count = Order.objects.filter(delivery_staff=user, status=Order.DELIVERED, date__gte=start_date, date__lte=end_date).count()
+        orders_count = Order.objects.filter(
+                            delivery_staff=user,
+                            status=Order.DELIVERED,
+                            date__range=(start_date, end_date),
+                            product__is_primary=True
+                            ).aggregate(total_qty=Sum('quantity'))
         return wrap_response(True, "orders_count", data=orders_count, message="Orders fetched successfully.")
