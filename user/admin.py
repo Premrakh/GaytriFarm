@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User,EmailVerificationToken
+from .models import User,EmailVerificationToken, Payment, QrCode
 # Register your models here.
 
 @admin.register(User)
@@ -15,3 +15,11 @@ class UserAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 admin.site.register(EmailVerificationToken)
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ['id','user','amount','created']
+    list_filter = ('user',)
+    ordering = ('-created',)
+
+admin.site.register(QrCode)

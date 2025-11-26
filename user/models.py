@@ -81,3 +81,15 @@ class Notification(Base):
 
     def __str__(self):
         return f"Notification to {self.user.user_name}: {self.title}"
+
+class Payment(Base):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payment_transactions")
+    amount = models.PositiveIntegerField()
+    record_by =  models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,related_name="payment_record_by")
+
+class QrCode(Base):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="qr_code")
+    qr = models.ImageField(upload_to='qr_code/')
+
+    def __str__(self):
+        return f"QR Code for {self.user.user_name}"

@@ -3,18 +3,18 @@ from rest_framework.views import APIView
 from rest_framework import status
 import random, string
 from django.utils import timezone
-from .models import User, EmailVerificationToken
+from .models import User, EmailVerificationToken, Payment
 from dairy.models import Order
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
         EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,
-        CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer)
+        CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import send_forgot_password_email, send_verification_email
 from rest_framework.permissions import IsAuthenticated
-from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission
+from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission, CustomerPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import OuterRef, Exists, Q
+from django.db.models import OuterRef, Exists, Q, Sum
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
 # Create your views here.
@@ -638,3 +638,82 @@ class ActiveDeactivateDeliveryStaff(APIView):
         customers = User.objects.filter(is_active=False, role = User.DELIVERY_STAFF)
         serializer = EnrollUsersSerializer(customers, many=True)
         return wrap_response(True, code='customer_retrieve', data=serializer.data)
+
+
+class AddPayment(APIView):
+    permission_classes = [IsAuthenticated, IsVerified, AdminOrDistributorPermission]
+
+    def post(self,request):
+        user = request.user
+        serializer = PaymentSerializer(data=request.data)
+        if serializer.is_valid():
+            if user.role == User.DISTRIBUTOR:
+                if serializer.validated_data['user'].distributor != user:
+                    return wrap_response(False, code='invalid_customer', message='Payement Add Failed')
+            serializer.save(record_by=request.user)
+            return wrap_response(True, code='payment_added_successfully', message='Payement Added Successfully')
+        return wrap_response(False, code='invalid_data', message='Payement Add Failed', errors=serializer.errors)
+
+
+class BalanceView(APIView):
+    permission_classes = [IsAuthenticated, IsVerified]
+
+    def get(self,request): 
+        user = request.user
+        bill_amount = user.orders.filter(
+            status=Order.DELIVERED
+        ).aggregate(total=Sum('total_price'))['total'] or 0
+
+        payment_amount = user.payment_transactions.aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+
+        balance = payment_amount - bill_amount
+        return wrap_response(True, code='balance_retrieve', data={"balance" : balance})
+
+
+
+class QrCodeView(APIView):
+    permission_classes = [IsAuthenticated, IsVerified,]
+
+    def get_object(self, user):
+        return getattr(user, "qr_code", None)
+
+    def get(self, request):
+        qr_obj = self.get_object(request.user)
+        if not qr_obj:
+            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+
+        serializer = QrCodeSerializer(qr_obj)
+        return wrap_response(True, code='qr_retrieve', data=serializer.data)
+
+    def post(self, request):
+        if self.get_object(request.user):
+            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+
+        serializer = QrCodeSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return wrap_response(True, code='qrcode_created', data=serializer.data)
+
+        return wrap_response(False, code='invalid_data', errors=serializer.errors)
+
+    def put(self, request):
+        qr_obj = self.get_object(request.user)
+        if not qr_obj:
+            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+
+        serializer = QrCodeSerializer(qr_obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return wrap_response(True, code='qrcode_updated', data=serializer.data)
+
+        return wrap_response(False, code='invalid_data', errors=serializer.errors)
+
+    def delete(self, request):
+        qr_obj = self.get_object(request.user)
+        if not qr_obj:
+            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+
+        qr_obj.delete()
+        return wrap_response(False, code='qrcode_deleted', message="QR deleted successfully")

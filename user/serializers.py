@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, Payment, QrCode
 import re
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -140,4 +140,15 @@ class RouteSetupSerializer(serializers.Serializer):
             if not delivery_staff_id:
                 raise serializers.ValidationError("Delivery staff id is required.")
         return super().validate(attrs)
-        
+
+class PaymentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Payment
+        fields = ['id','user', 'amount','created']
+
+class QrCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QrCode
+        fields = ["id", "qr"]
+        read_only_fields = ["id"]
