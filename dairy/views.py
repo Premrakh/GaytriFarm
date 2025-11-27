@@ -141,7 +141,11 @@ class ManageOrderAPI(APIView):
 
     def get(self, request):
         user = request.user
+        user_id = request.query_params.get('user_id')
         delivery_staff_id = request.query_params.get('delivery_staff_id')
+        distributor_id = request.query_params.get('distributor_id')
+        day_filter = request.query_params.get('day_filter')
+        product_id = request.query_params.get('product_id')
         # Base query based on user role
         if user.role == User.DELIVERY_STAFF:
             orders = Order.objects.filter(delivery_staff=user)
@@ -151,13 +155,15 @@ class ManageOrderAPI(APIView):
             else:
                 orders = Order.objects.filter(customer__distributor=user)
         elif user.is_superuser:
-            orders = Order.objects.all()
+            if distributor_id:
+                orders = Order.objects.filter(customer__distributor_id=distributor_id)
+            else:
+                orders = Order.objects.all()
         else:
             return wrap_response(False, "permission_denied", message="Permnission denied")
         
         # Apply filters from query parameters
         # Date filter: today/tomorrow
-        day_filter = request.query_params.get('day_filter')
         if day_filter:
             today = timezone.now().date()
             if day_filter.lower() == 'today':
@@ -167,12 +173,10 @@ class ManageOrderAPI(APIView):
                 orders = orders.filter(date=tomorrow)
         
         # User filter (customer filter)
-        user_id = request.query_params.get('user_id')
         if user_id:
             orders = orders.filter(customer__user_id=user_id)
         
         # Product filter
-        product_id = request.query_params.get('product_id')
         if product_id:
             orders = orders.filter(product__id=product_id)
         

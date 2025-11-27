@@ -3,7 +3,7 @@ from .views import (UserRegistrationView, UserLoginView, EmailVerificationView, 
                     SendEmailTokenView, UserLogoutView,UpdateFCMTokenView,ForgotPasswordView,
                     ResetPasswordView, AccountView,DistributorView, CustomerView , DeliveryStaffView, DistributorView,
                     ChangePasswordView,AddCustomer,RouteSetupView,UpdateCustomerDelievery, ActiveDeactiveCustomer, ActiveDeactiveCustomer, ActiveDeactivateDeliveryStaff,
-                    AddPayment, BalanceView, QrCodeView
+                    AddPayment, CustomerBalanceView, DistributorBalanceView , QrCodeView
                     )
 urlpatterns = [
     path('register/', UserRegistrationView.as_view()),
@@ -27,7 +27,8 @@ urlpatterns = [
     path('active-deactive-customer/', ActiveDeactiveCustomer.as_view()),
     path('active-deactive-delievery_staff/', ActiveDeactivateDeliveryStaff.as_view()),
     path('add_payment/', AddPayment.as_view()),
-    path('balance/', BalanceView.as_view()),
+    path('customer_balance/', CustomerBalanceView.as_view()),
+    path('distributor_balance/', DistributorBalanceView.as_view()),
     path('qrcode/', QrCodeView.as_view(), name="qr-code"),
 
 ]

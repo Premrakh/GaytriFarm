@@ -655,11 +655,18 @@ class AddPayment(APIView):
         return wrap_response(False, code='invalid_data', message='Payement Add Failed', errors=serializer.errors)
 
 
-class BalanceView(APIView):
+class CustomerBalanceView(APIView):
     permission_classes = [IsAuthenticated, IsVerified]
 
     def get(self,request): 
-        user = request.user
+        customer_id = request.query_params.get('customer_id')
+        if customer_id:
+            user = User.objects.filter(user_id=customer_id)
+            if not user.exists():
+                return wrap_response(False, code='customer_not_found', message="Customer not found")
+            user = user.first()
+        else:
+            user = request.user
         bill_amount = user.orders.filter(
             status=Order.DELIVERED
         ).aggregate(total=Sum('total_price'))['total'] or 0
@@ -671,6 +678,26 @@ class BalanceView(APIView):
         balance = payment_amount - bill_amount
         return wrap_response(True, code='balance_retrieve', data={"balance" : balance})
 
+class DistributorBalanceView(APIView):
+    permission_classes = [IsAuthenticated, IsVerified, AdminOrDistributorPermission]
+
+    def get(self,request): 
+        distributor_id = request.query_params.get('distributor_id')
+        if distributor_id:
+            user = User.objects.filter(user_id=distributor_id)
+            if not user.exists():
+                return wrap_response(False, code='distributor_not_found', message="Distributor not found")
+            user = user.first()
+        else:
+            user = request.user
+        bill_amount = user.distributor_orders.all().aggregate(total=Sum('total_price'))['total'] or 0
+
+        payment_amount = user.payment_transactions.aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+
+        balance = payment_amount - bill_amount
+        return wrap_response(True, code='balance_retrieve', data={"balance" : balance})
 
 
 class QrCodeView(APIView):

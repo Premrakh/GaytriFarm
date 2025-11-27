@@ -47,3 +47,12 @@ class UserBill(Base):
 
     def __str__(self):
         return f"Bill for {self.user.user_name}"
+
+class DistributorOrder(Base):
+    distributor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='distributor_orders')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    total_price = models.PositiveIntegerField()
+    
+    def __str__(self):
+        return f"Order for {self.distributor.user_name}"
