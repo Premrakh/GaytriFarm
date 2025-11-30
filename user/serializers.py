@@ -159,3 +159,8 @@ class UserBillSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserBill
         fields = ['id', 'user', 'type',  'pdf_file', 'due_date','created']
+
+class GenerateBillSerializer(serializers.Serializer):
+    user_id = serializers.CharField()
+    month = serializers.IntegerField()
+    year = serializers.IntegerField()

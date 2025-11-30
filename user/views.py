@@ -7,7 +7,8 @@ from .models import User, EmailVerificationToken,  UserBill
 from dairy.models import Order
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
         EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,UserBillSerializer,
-        CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer,BankAccountSerializer)
+        CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer,BankAccountSerializer,
+        GenerateBillSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import send_forgot_password_email, send_verification_email
 from rest_framework.permissions import IsAuthenticated
@@ -17,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import OuterRef, Exists, Q, Sum
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
+from tasks import generate_customer_bill, generate_distributor_bill
 # Create your views here.
 
 
@@ -597,8 +599,7 @@ class ActiveDeactivateDeliveryStaff(APIView):
             return wrap_response(False, "missing_fields",
                                  message="delivery_staff_id and new_delivery_staff_id are required.")
 
-
-        if old_staff.user_id == new_staff.user_id:
+        if staff_id == new_staff_id:
             return wrap_response(False, "same_staff",
                                  message="Old and new delivery staff cannot be same.")
 
@@ -609,7 +610,7 @@ class ActiveDeactivateDeliveryStaff(APIView):
             is_active=True
         )
         if len(staff) != 2:
-            return wrap_response(False, code='missing_data', message='delivery_staff_id and new_delivery_staff_id is Invalid')
+            return wrap_response(False, code='missing_data', message='delivery_staff_id or new_delivery_staff_id is Invalid')
 
         # Cannot self assign (same staff)
 
@@ -618,20 +619,19 @@ class ActiveDeactivateDeliveryStaff(APIView):
         # ---------------------------------------------------
         User.objects.filter(
             role=User.CUSTOMER,
-            delivery_staff=old_staff,
+            delivery_staff_id=staff_id,
             distributor=distributor
-        ).update(delivery_staff=new_staff)
+        ).update(delivery_staff_id=new_staff_id)
 
         # ---------------------------------------------------
         # Deactivate old staff
         # ---------------------------------------------------
-        old_staff.is_active = False
-        old_staff.save(update_fields=["is_active"])
+        User.objects.filter(user_id=staff_id).update(is_active=False)
 
         return wrap_response(
             True,
             "delivery_staff_deactivated",
-            message=f"Delivery staff '{old_staff.user_name}' deactivated and customers reassigned to '{new_staff.user_name}'."
+            message=f"Delivery staff Update Sucessfully."
         )
 
     def get(self,request):
@@ -759,3 +759,22 @@ class UserBillView(APIView):
             user_bills = UserBill.objects.filter(type=type).order_by('-created')
         serializer = UserBillSerializer(user_bills, many=True)
         return wrap_response(True, "bills", data=serializer.data, message="Bills fetched successfully.")
+
+
+class GenerateBillView(APIView):
+    permission_classes = [IsAuthenticated,IsVerified,AdminOrDistributorPermission]
+
+    def post(self, request):
+        serializer = GenerateBillSerializer(data=request.data)
+        if not serializer.is_valid():
+            return wrap_response(False, code='invalid_data', errors=serializer.errors)
+        users = User.objects.filter(user_id=serializer.validated_data['user_id'])
+        if not users.exists():
+            return wrap_response(False, code='user_not_found', message="Invalid user_id")
+        month = serializer.validated_data['month']
+        year = serializer.validated_data['year']
+        if request.user.role == User.DISTRIBUTOR:
+            generate_customer_bill(month, year, users)
+        else:
+            generate_distributor_bill(month, year, users)
+        return wrap_response(True, code='bill_generated', message="Bill generated successfully")

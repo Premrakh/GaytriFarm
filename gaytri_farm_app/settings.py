@@ -189,7 +189,7 @@ BACKEND_URL = os.getenv('BACKEND_URL','http://localhost:8000')
 
 CELERY_BEAT_SCHEDULE = {
     'generate_monthly_bills_task': {
-        'task': 'dairy.tasks.generate_monthly_bills_task',
+        'task': 'user.tasks.generate_monthly_bills_task',
         'schedule': crontab(day_of_month=1, hour=5),  # every day at 05:00
     },
     'create_daily_distributor_orders': {

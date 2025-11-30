@@ -5,12 +5,9 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable, Flowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 )
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-import re,requests
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from datetime import datetime
 from num2words import num2words
 
