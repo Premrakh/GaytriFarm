@@ -18,7 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import OuterRef, Exists, Q, Sum
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
-from tasks import generate_customer_bill, generate_distributor_bill
+from .tasks import generate_customer_bill, generate_distributor_bill
 # Create your views here.
 
 
