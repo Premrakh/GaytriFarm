@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Order, UserBill, DistributorOrder
+from .models import Product, Order, DistributorOrder
 
 
 @admin.register(Product)
@@ -11,10 +11,6 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ('id', 'customer', 'product', 'quantity', 'status','date')
     ordering = ('-date',)
     list_filter = ('customer', 'product', 'status','created')
-
-@admin.register(UserBill)
-class UserBillAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'total_product', 'total_amount')
 
 @admin.register(DistributorOrder)
 class DistributorOrderAdmin(admin.ModelAdmin):

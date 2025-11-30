@@ -98,3 +98,24 @@ class BankAccount(Base):
 
     def __str__(self):
         return f"Bank Account for {self.user.user_name}"
+
+
+class UserBill(Base):
+    CUSTOMER_BILL = 'customer_bill'
+    DISTRIBUTOR_BILL = 'distributor_bill'
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bills')
+    total_product = models.PositiveIntegerField(default=0)
+    total_amount = models.PositiveIntegerField(default=0)
+    pdf_file = models.FileField(upload_to='bills/', null=True, blank=True)
+    type = models.CharField(max_length=50, choices=[(CUSTOMER_BILL, 'Customer Bill'), (DISTRIBUTOR_BILL, 'Distributor Bill')], default=CUSTOMER_BILL)
+    class Meta:
+        ordering = ['-created']
+
+    @property
+    def due_date(self):
+        # return last month-year like : 2025-10
+        return (self.created - timezone.timedelta(days=1)).strftime('%Y-%m')
+
+    def __str__(self):
+        return f"Bill for {self.user.user_name}"

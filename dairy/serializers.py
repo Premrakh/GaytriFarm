@@ -1,6 +1,6 @@
 # shop/serializers.py
 from rest_framework import serializers
-from .models import Product, Order, UserBill
+from .models import Product, Order
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,11 +33,6 @@ class ManagerOrderSerializer(serializers.ModelSerializer):
                   "product","quantity","total_price","date","status"]
 
 
-class UserBillSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = UserBill
-        fields = ['id', 'user',  'total_product', 'total_amount', 'pdf_file', 'created']
     
 class CustomerBillDetailSerializer(serializers.Serializer):
     month = serializers.IntegerField()

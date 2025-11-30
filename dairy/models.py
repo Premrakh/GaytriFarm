@@ -37,17 +37,6 @@ class Order(Base):
     def __str__(self):
         return f"{self.id}"
 
-class UserBill(Base):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bills')
-    total_product = models.PositiveIntegerField(default=0)
-    total_amount = models.PositiveIntegerField(default=0)
-    pdf_file = models.FileField(upload_to='bills/', null=True, blank=True)
-    class Meta:
-        ordering = ['-created']
-
-    def __str__(self):
-        return f"Bill for {self.user.user_name}"
-
 class DistributorOrder(Base):
     distributor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='distributor_orders')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User,EmailVerificationToken, Payment, BankAccount
+from .models import User,EmailVerificationToken, Payment, BankAccount, UserBill
 # Register your models here.
 
 @admin.register(User)
@@ -23,3 +23,8 @@ class PaymentAdmin(admin.ModelAdmin):
     ordering = ('-created',)
 
 admin.site.register(BankAccount)
+
+@admin.register(UserBill)
+class UserBillAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'created','type')
+    list_filter = ('user', 'type', 'created')

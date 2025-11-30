@@ -1,168 +1,278 @@
 from io import BytesIO
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
-from django.core.files.base import ContentFile
-
-from io import BytesIO
 from django.core.files.base import ContentFile
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.units import inch
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable, Flowable
+)
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import re,requests
+from datetime import datetime
+from num2words import num2words
+
+def _safe_fetch_image(qr_field):
+    """Fetch image bytes from URL, return BytesIO or None."""
+    if not qr_field:
+        return None
+    
+    try:
+        # If it's a Django FileField/ImageField object
+        if hasattr(qr_field, 'read'):
+            # Read file content directly
+            qr_field.open('rb')  # Open in binary read mode
+            content = qr_field.read()
+            qr_field.close()
+            return BytesIO(content)
+        return None
+    except Exception as e:
+        print(f"Error fetching QR image: {e}")
+        return None
+
+
+def _amount_to_words(amount):
+    try:
+        amt = float(amount)
+    except:
+        return str(amount)
+
+    if num2words:
+        try:
+            words = num2words(int(round(amt)), lang="en_IN")
+            return f"{words.title()} Rupees Only"
+        except:
+            pass
+
+    return f"{int(round(amt))} Rupees Only"
+
+
 
 def generate_bill_pdf(bill_data):
-    """
-    Generate a formatted PDF bill with company header, separator, and footer.
-    """
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
-        rightMargin=30, leftMargin=30,
-        topMargin=30, bottomMargin=18
+        rightMargin=40, leftMargin=40,
+        topMargin=60, bottomMargin=18
     )
 
-    elements = []
     styles = getSampleStyleSheet()
-
-    # ---------- Styles ----------
     title_style = ParagraphStyle(
         'Title',
         parent=styles['Heading1'],
-        fontSize=20,
-        textColor=colors.HexColor('#222222'),
-        spaceAfter=6,
+        fontSize=18,
+        textColor=colors.HexColor('#0B4F8A'),
         alignment=TA_CENTER,
-        fontName='Helvetica-Bold'
+        fontName='Helvetica-Bold',
+        spaceAfter=8
     )
-    sub_style = ParagraphStyle(
-        'SubHeading',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.HexColor('#555555'),
-        alignment=TA_CENTER,
-        spaceAfter=12
-    )
-    heading_style = ParagraphStyle(
-        'Heading',
-        parent=styles['Heading2'],
-        fontSize=14,
-        textColor=colors.HexColor('#333333'),
-        spaceAfter=12,
-        fontName='Helvetica-Bold'
-    )
-    normal_style = ParagraphStyle(
-        'NormalText',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.black
-    )
+    normal = ParagraphStyle('normal', parent=styles['Normal'], fontSize=10, fontName="Helvetica")
+    bold = ParagraphStyle('bold', parent=styles['Normal'], fontSize=10, fontName="Helvetica-Bold")
+    right_normal = ParagraphStyle('right_normal', parent=styles['Normal'], alignment=TA_RIGHT, fontSize=10)
 
-    # ---------- Company Header ----------
-    company_name = Paragraph("Gayatri Dairy Farm", title_style)
-    tagline = Paragraph("Pure. Fresh. Delivered Daily.", sub_style)
-    company_details = Paragraph(
-        "Virani Chowk, 1st Floor,Riddhi Siddhi Complex, Rajkot, Gujarat 360002, India<br/>"
-        "GSTIN: 27AAECG1234R1Z5 ",
-        ParagraphStyle('CompanyInfo', parent=styles['Normal'],
-                       alignment=TA_CENTER, fontSize=9,
-                       textColor=colors.HexColor('#666666'), spaceAfter=10)
-    )
+    # Calculate available width (A4 width - left margin - right margin)
+    # A4 width = 8.27 inches, with 30pt margins on each side
+    page_width = A4[0] - 60  # 60 = leftMargin + rightMargin
+    
+    elements = []
 
-    elements += [company_name, tagline, company_details]
+    # ---------------- HEADER (Distributor Left) ----------------
+    dist = bill_data.get('supplier', {})
+    dist_name = dist.get('name') or dist.get('user_name')
 
-    # ---------- Separator Line ----------
-    separator = HRFlowable(
-        width="100%",
-        thickness=1,
-        color=colors.HexColor("#171A17"),  # soft green line
-        spaceBefore=10,
-        spaceAfter=20
-    )
-    elements.append(separator)
+    header_lines = [f"<b>{dist_name.upper()}</b>"]
+    if dist.get('address'): header_lines.append("Address: " + dist.get('address'))
+    if dist.get('mobile'): header_lines.append("Mobile: " + dist.get('mobile'))
+    if dist.get('email'): header_lines.append("Email: " + dist.get('email'))
+    if dist.get('gst_no'): header_lines.append("GSTIN: " + dist.get('gst_no'))
+    if dist.get('state'): header_lines.append("State: " + dist.get('state'))
 
-    # ---------- Bill Title ----------
-    title = Paragraph("<b>MONTHLY BILL</b>", title_style)
-    elements.append(title)
-    elements.append(Spacer(1, 12))
+    distributor_para = Paragraph("<br/>".join(header_lines), normal)
 
-    # ---------- Customer Info ----------
-    customer_info = [
-        ["Customer Name:", bill_data.get('customer_name', 'N/A')],
-        ["Customer ID:", bill_data.get('customer_id', 'N/A')],
-        ["Billing Period:", f"{bill_data['billing_period']['month_name']} {bill_data['billing_period']['year']}"],
-        ["Generated On:", bill_data.get('generated_at', '')[:10]],
-    ]
-    customer_table = Table(customer_info, colWidths=[2*inch, 4*inch])
-    customer_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+    header = Table([[distributor_para, ""]], colWidths=[page_width * 0.62, page_width * 0.38])
+    header.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.lightgrey),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
     ]))
-    elements.append(customer_table)
-    elements.append(Spacer(1, 20))
+    elements.append(header)
+    elements.append(Spacer(1, 8))
 
-    # ---------- Product Breakdown ----------
-    elements.append(Paragraph("Product Breakdown", heading_style))
+    # ---------------- TAX INVOICE TITLE ----------------
+    elements.append(Paragraph("<b>Tax Invoice</b>", title_style))
+    elements.append(Spacer(1, 10))
+
+    # ---------------- Invoice Details (Right) + Bill To ----------------
+    generated = bill_data.get('generated_at', '')[:10]
+    try:
+        inv_date = datetime.fromisoformat(generated).strftime("%d-%m-%Y")
+    except:
+        inv_date = generated
+
+    inv_block = Paragraph(
+        f"<b>Invoice Details</b><br/>"
+        f"Invoice No: {bill_data.get('bill_id')}<br/>"
+        f"Date: {inv_date}",
+        right_normal
+    )
+
+    customer = bill_data.get('user', {})
+    customer_lines = [
+        f"<b>Bill To:</b>"
+    ]
+    customer_name = customer.get('name') or customer.get('user_name')
+    if customer_name: customer_lines.append(customer_name)
+    if customer.get('address'): customer_lines.append(customer.get('address'))
+    if customer.get('mobile'): customer_lines.append("Contact No.: " + customer.get('mobile'))
+    if customer.get('email'): customer_lines.append("Email: " + customer.get('email'))
+
+    c_para = Paragraph("<br/>".join(customer_lines), normal)
+
+    section = Table([[c_para, inv_block]], colWidths=[page_width * 0.62, page_width * 0.38])
+    section.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(section)
     elements.append(Spacer(1, 12))
 
-    product_data = [['Product Name', 'Unit Price (Rs.)', 'Quantity', 'Total Amount (Rs.)']]
-    for p in bill_data.get('product_breakdown', []):
-        product_data.append([
-            p['product_name'],
-            f"Rs. {p['unit_price']}",
-            str(p['quantity']),
-            f"Rs. {p['total_amount']}"
+    # ---------------- PRODUCT BREAKDOWN TABLE ----------------
+    prods = bill_data.get('product_breakdown', [])
+    total_items = bill_data.get('total_items')
+    grand_total = float(bill_data.get('total_amount'))
+
+    rows = [['#', 'Item Name', 'Quantity', 'Unit', 'Price/Unit', 'Amount']]
+    for i, p in enumerate(prods, start=1):
+        name = p.get('product_name')
+        qty = int(p.get('total_quantity', 0))
+        unit = 'ltr'
+        price = float(p.get('unit_price', 0))
+        amt = float(p.get('total_amount', price * qty))
+
+        rows.append([
+            str(i),
+            Paragraph(name, normal),
+            str(qty),
+            str(unit),
+            f"Rs. {price:,.2f}",
+            f"Rs. {amt:,.2f}"
         ])
-    product_table = Table(product_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
-    product_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4CAF50')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+    rows.append([
+        '',
+        Paragraph("<b>Total</b>", bold),
+        Paragraph(f"<b>{total_items}</b>", bold),
+        '',
+        '',
+        Paragraph(f"<b>Rs. {grand_total:,.2f}</b>", bold)
+    ])
+
+    # Use proportional widths based on page_width
+    table = Table(
+        rows,
+        colWidths=[
+            page_width * 0.07,   # # column
+            page_width * 0.38,   # Item Name
+            page_width * 0.12,   # Quantity
+            page_width * 0.10,   # Unit
+            page_width * 0.16,   # Price/Unit
+            page_width * 0.17    # Amount
+        ],
+        repeatRows=1
+    )
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4E79')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F7F9FC')]),
+        # Align money columns right
+        ('ALIGN', (4, 1), (5, -1), 'RIGHT'),
+        # Bold total row
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F0F5FF')),
+        ('ALIGN', (2, -1), (2, -1), 'CENTER'),
+        # Remove extra padding to align with page margins
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
-    elements.append(product_table)
+    elements.append(table)
     elements.append(Spacer(1, 20))
 
-    # ---------- Summary ----------
-    summary_data = [
-        ['Total Items:', str(bill_data.get('total_items', 0))],
-        ['Total Amount:', f"Rs. {bill_data.get('total_amount', 0)}"],
-    ]
-    summary_table = Table(summary_data, colWidths=[4.5*inch, 2.5*inch])
-    summary_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 12),
-        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
-        ('LINEBELOW', (0, -1), (-1, -1), 1, colors.black),
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#4CAF50')),
-        ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
+    # ---------------- AMOUNT IN WORDS ----------------
+    amount_para = Paragraph(f"<b>Invoice Amount In Words:</b> <br/> {_amount_to_words(grand_total)}", normal)
+    amount_table = Table([[amount_para]], colWidths=[page_width])
+    amount_table.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
     ]))
-    elements.append(summary_table)
-    elements.append(Spacer(1, 30))
+    elements.append(amount_table)
+    elements.append(Spacer(1, 10))
 
-    # ---------- Footer ----------
-    footer = Paragraph(
-        "Thank you for choosing <b>Gayatri Dairy Farm</b>!<br/>"
-        "For support or billing queries, email us at "
-        "<a href='mailto:support@gayatridairy.com'>support@gayatridairy.com</a>",
-        ParagraphStyle('Footer', parent=normal_style, alignment=TA_CENTER,
-                       fontSize=9, textColor=colors.HexColor('#666666'))
-    )
-    elements.append(footer)
+    # ---------------- TERMS & CONDITIONS ----------------
+    terms = "According to our farm’s policy, no claims will be accepted after delivery. Payment should be made on time."
+    terms_title = Paragraph("<b>Terms And Conditions</b>", bold)
+    terms_content = Paragraph(terms, normal)
+    
+    terms_table = Table([[terms_title]], colWidths=[page_width])
+    terms_table.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(terms_table)
+    
+    terms_content_table = Table([[terms_content]], colWidths=[page_width])
+    terms_content_table.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(terms_content_table)
+    elements.append(Spacer(1, 14))
 
-    # ---------- Build & Return ----------
+    # ---------------- QR + BANK ----------------
+    bank = bill_data.get('bank_account', {})
+    qr_io = _safe_fetch_image(bank.get('qr')) ### error
+
+    qr_img = None
+    if qr_io:
+        qr_img = Image(qr_io, width=1.2*inch, height=1.2*inch)
+    
+    bank_lines = []
+    if bank:
+        bank_lines.append('<b>Pay To:</b>')
+        if bank.get('bank_name'): bank_lines.append(f"Bank Name: {bank.get('bank_name')}")
+        if bank.get('account_no'): bank_lines.append(f"Account No: {bank.get('account_no')}")
+        if bank.get('ifsc_code'): bank_lines.append(f"IFSC Code: {bank.get('ifsc_code')}")
+        if bank.get('holder_name'): bank_lines.append(f"Account Holder: {bank.get('holder_name')}")
+
+    bank_para = Paragraph("<br/>".join(bank_lines), normal)
+
+    # Table layout: QR on left, Bank details on right
+    row = [qr_img if qr_img else '', bank_para]
+    t = Table([row], colWidths=[page_width * 0.23, page_width * 0.77])
+    t.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.grey),
+    ]))
+
+    elements.append(t)
+    elements.append(Spacer(1, 12))
+
+    # Build PDF
     doc.build(elements)
-    pdf_content = buffer.getvalue()
+    pdf_data = buffer.getvalue()
     buffer.close()
-    return ContentFile(pdf_content)
+    return ContentFile(pdf_data)

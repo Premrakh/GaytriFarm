@@ -25,6 +25,7 @@ twilio = "^9.8.5"
 sib-api-v3-sdk = "^7.6.0"
 pillow = "^12.0.0"
 django-cleanup = "^9.0.0"
+num2words = "^0.5.14"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

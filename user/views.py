@@ -3,10 +3,10 @@ from rest_framework.views import APIView
 from rest_framework import status
 import random, string
 from django.utils import timezone
-from .models import User, EmailVerificationToken, Payment
+from .models import User, EmailVerificationToken,  UserBill
 from dairy.models import Order
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
-        EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,
+        EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,UserBillSerializer,
         CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer,BankAccountSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import send_forgot_password_email, send_verification_email
@@ -744,3 +744,18 @@ class BankAccountView(APIView):
 
         bank_obj.delete()
         return wrap_response(False, code='bank_account_deleted', message="Bank account deleted successfully")
+
+
+class UserBillView(APIView):
+    permission_classes = [IsAuthenticated,IsVerified]
+    def get(self, request):
+        user = request.user
+        type = request.query_params.get('type')
+        if type not in [UserBill.CUSTOMER_BILL, UserBill.DISTRIBUTOR_BILL, 'my_bill']:
+            return wrap_response(False, "invalid_type", message="type must be in ['customer_bill', 'distributor_bill', 'my_bill']")
+        if type == 'my_bill':
+            user_bills = UserBill.objects.filter(user=user).order_by('-created')
+        else:
+            user_bills = UserBill.objects.filter(type=type).order_by('-created')
+        serializer = UserBillSerializer(user_bills, many=True)
+        return wrap_response(True, "bills", data=serializer.data, message="Bills fetched successfully.")

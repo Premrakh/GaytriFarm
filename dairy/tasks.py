@@ -5,8 +5,8 @@ from django.db.models import Sum , F, ExpressionWrapper, IntegerField
 from django.core.files.base import ContentFile
 from django.db import transaction
 
-from user.models import User
-from .models import Order, UserBill, DistributorOrder
+from user.models import User, UserBill
+from .models import Order,  DistributorOrder
 from twilio.rest import Client
 from .pdf_generator import generate_bill_pdf
 import os
@@ -34,27 +34,18 @@ def send_bills_via_whatsapp(link):
     to='whatsapp:+918980275047'
     )
 
-@shared_task()
-def generate_monthly_bills_task():
-    """
-    Celery task to generate monthly bills for all customers.
-    Same logic as the Django management command.
-    """
-    now = timezone.now()
-    target_month = now.month - 1 if now.month > 1 else 12
-    target_year = now.year if now.month > 1 else now.year - 1
+def generate_customer_bill(target_month, target_year):
 
-    logger.info(f"Starting bill generation for {target_month}/{target_year}")
-
-    customers = User.objects.filter(role=User.CUSTOMER, role_accepted=True)
-    logger.info(f"Found {customers.count()} customers")
+    users = User.objects.filter(role=User.CUSTOMER, role_accepted=True
+                    ).exclude(bills__created__year=target_year, bills__created__month=target_month).select_related("distributor")
+    logger.info(f"Found {users.count()} users")
     errors = []
-    user_bills = []
-    for customer in customers:
+    # user_bills = []
+    for user in users:
         try:
             orders = (
                 Order.objects.filter(
-                    customer=customer,
+                    customer=user,
                     status=Order.DELIVERED,
                     date__month=target_month,
                     date__year=target_year,
@@ -69,16 +60,32 @@ def generate_monthly_bills_task():
 
             product_breakdown = list(orders)
             if not product_breakdown:
-                logger.info(f"No delivered orders for {customer.user_name} in {target_month}/{target_year}. Skipping bill generation.")
+                logger.info(f"No delivered orders for {user.user_name} in {target_month}/{target_year}. Skipping bill generation.")
                 continue
 
             grand_total = sum(order["total_amount"] for order in product_breakdown)
             total_items = sum(order["total_quantity"] for order in product_breakdown)
 
+            distributor = user.distributor
+            bank_account_obj = getattr(distributor, "bank_account", None)
+
+            if bank_account_obj:
+                bank_account = {"account_no": bank_account_obj.account_no,
+                                 "bank_name": bank_account_obj.bank_name,
+                                 "holder_name": bank_account_obj.holder_name,
+                                 "ifsc_code": bank_account_obj.ifsc_code,
+                                 "gst_no": bank_account_obj.gst_no,
+                                 "qr": bank_account_obj.qr}
+            else:
+                bank_account = None
+
+            user_bill = UserBill.objects.create(user = user, total_product = total_items, total_amount = grand_total, type=UserBill.CUSTOMER_BILL)
 
             bill_data = {
-                "customer_id": str(customer.user_id),
-                "customer_name": customer.user_name,
+                "bill_id" : user_bill.id,
+                "user" : {"name": user.user_name, "email": user.email, "mobile": user.mobile, "address": user.address},
+                "supplier" : {"name": distributor.user_name, "email": distributor.email,"mobile": distributor.mobile, "address": distributor.address, "state": distributor.state},
+                "bank_account" : bank_account,
                 "billing_period": {
                     "month": target_month,
                     "year": target_year,
@@ -92,28 +99,18 @@ def generate_monthly_bills_task():
                 "generated_at": timezone.now().isoformat(),
             }
 
-            logger.info(f"Generating PDF for {customer.user_name}...")
-            pdf_content = generate_bill_pdf(bill_data)
-            pdf_filename = f"bill_{customer.user_name}_{target_month}_{target_year}.pdf"
-            pdf_path = os.path.join("bills", pdf_filename)
-            # save this file to the media directory
-            with open(pdf_path, "wb") as pdf_file:
-                pdf_file.write(pdf_content.read())
-            user_bills.append(UserBill(user=customer,total_product=total_items,total_amount=grand_total))
+            logger.info(f"Generating PDF for {user.user_name}...")
+            pdf_file = generate_bill_pdf(bill_data)
+            user_bill.pdf_file.save(f"bill_{bill_data['bill_id']}.pdf", pdf_file)
 
-            #send bill link to whatsapp
-            normalized_path = pdf_path.replace("\\", "/")
-            link = f"{settings.BACKEND_URL}/{normalized_path}"
-            send_bills_via_whatsapp(link)
         except Exception as e:
-            error_msg = f"Bill generation failed for {customer.user_name}: {str(e)}"
+            error_msg = f"Bill generation failed for {user.user_name}: {str(e)}"
             errors.append(error_msg)
 
-    UserBill.objects.bulk_create(user_bills)
     logger.info("BILL GENERATION SUMMARY")
 
     logger.info(f"Period: {target_month}/{target_year}")
-    logger.info(f"Bills Created: {len(user_bills)}")
+    # logger.info(f"Bills Created: {len(user_bills)}")
 
     if errors:
         logger.error(f"Errors: {len(errors)}")
@@ -122,6 +119,97 @@ def generate_monthly_bills_task():
     else:
         logger.info("✓ All bills generated successfully!")
 
+def generate_distributor_bill(target_month, target_year):
+    users = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=True
+                    ).exclude(bills__created__year=target_year, bills__created__month=target_month).select_related("distributor")
+    logger.info(f"Found {users.count()} users")
+    errors = []
+    admin = User.objects.filter(is_superuser=True).first()
+    bank_account_obj = getattr(admin, "bank_account", None)
+
+    if bank_account_obj:
+        bank_account = {"account_no": bank_account_obj.account_no,
+                            "bank_name": bank_account_obj.bank_name,
+                            "holder_name": bank_account_obj.holder_name,
+                            "ifsc_code": bank_account_obj.ifsc_code,
+                            "gst_no": bank_account_obj.gst_no,
+                            "qr": bank_account_obj.qr}
+    else:
+        bank_account = {}
+    for user in users:
+        try:
+            orders = (
+                DistributorOrder.objects.filter(
+                    distributor=user,
+                    created__month=target_month,
+                    created__year=target_year,
+                )
+                .select_related("product")
+                .values(total_quantity=F("quantity"), total_amount=F("total_price"),product_name=F("product__name"),unit_price=F("product__distributor_price"))
+            )
+
+            product_breakdown = list(orders)
+            if not product_breakdown:
+                logger.info(f"No delivered orders for {user.user_name} in {target_month}/{target_year}. Skipping bill generation.")
+                continue
+
+            grand_total = sum(order["total_amount"] for order in product_breakdown)
+            total_items = sum(order["total_quantity"] for order in product_breakdown)
+
+
+            user_bill = UserBill.objects.create(user = user,total_product= total_items, total_amount= grand_total, type=UserBill.DISTRIBUTOR_BILL)
+
+            bill_data = {
+                "bill_id" : user_bill.id,
+                "user" : {"name": user.user_name, "email": user.email, "mobile": user.mobile, "address": user.address},
+                "supplier" : {"name": "Gayatri Farm", "email": admin.email,"mobile": admin.mobile, "address": admin.address, "state": admin.state},
+                "bank_account" : bank_account,
+                "billing_period": {
+                    "month": target_month,
+                    "year": target_year,
+                    "month_name": timezone.datetime(
+                        target_year, target_month, 1
+                    ).strftime("%B"),
+                },
+                "total_items": total_items,
+                "total_amount": grand_total,
+                "product_breakdown": product_breakdown,
+                "generated_at": timezone.now().isoformat(),
+            }
+
+            logger.info(f"Generating PDF for {user.user_name}...")
+            pdf_file = generate_bill_pdf(bill_data)
+            user_bill.pdf_file.save(f"bill_{bill_data['bill_id']}.pdf", pdf_file)
+
+        except Exception as e:
+            error_msg = f"Bill generation failed for {user.user_name}: {str(e)}"
+            errors.append(error_msg)
+
+    logger.info("BILL GENERATION SUMMARY")
+
+    logger.info(f"Period: {target_month}/{target_year}")
+
+    if errors:
+        logger.error(f"Errors: {len(errors)}")
+        for error in errors:
+            logger.error(f"  - {error}")
+    else:
+        logger.info("✓ All bills generated successfully!")
+
+@shared_task()
+def generate_monthly_bills_task():
+    """
+    Celery task to generate monthly bills for all users.
+    Same logic as the Django management command.
+    """
+    now = timezone.now()
+    target_month = now.month - 1 if now.month > 1 else 12
+    target_year = now.year if now.month > 1 else now.year - 1
+
+    logger.info(f"Starting bill generation for {target_month}/{target_year}")
+
+    generate_customer_bill(target_month, target_year)
+    generate_distributor_bill(target_month, target_year)
 
 @shared_task
 def create_daily_distributor_orders():
@@ -154,7 +242,7 @@ def create_daily_distributor_orders():
         )
 
         if not grouped_orders.exists():
-            logger.info(f"⛔ No customer orders today for distributor {distributor.user_id}, skipping.")
+            logger.info(f"⛔ No user customers today for distributor {distributor.user_id}, skipping.")
             continue
 
         distributor_orders = [

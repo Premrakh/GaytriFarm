@@ -7,7 +7,8 @@ from gaytri_farm_app.custom_permission import (
 )
 from .models import Product, Order
 from user.models import User
-from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,BulkOrderSerializer)
+from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,
+                          BulkOrderSerializer,)
 from django.db.models import Sum , F
 from datetime import date, timedelta, datetime
 from calendar import monthrange

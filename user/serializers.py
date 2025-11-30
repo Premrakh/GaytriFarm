@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Payment, BankAccount
+from .models import User, Payment, BankAccount, UserBill
 import re
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -152,3 +152,10 @@ class BankAccountSerializer(serializers.ModelSerializer):
         model = BankAccount
         fields = ["user","account_no","bank_name","holder_name","ifsc_code","gst_no","qr"]
         read_only_fields = ["user"]
+
+
+class UserBillSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = UserBill
+        fields = ['id', 'user', 'type',  'pdf_file', 'due_date','created']

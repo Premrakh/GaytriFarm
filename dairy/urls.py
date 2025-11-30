@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import ProductDetailAPIView, ProductDetailAPIView, CustomerOrderView, ManageOrderAPI, ManageOrderAPI, CustomerMonthlyBillView, MonthlyRevenueView,BulkOrderView,DeliveredOrdersCount
-
+from .views import (ProductDetailAPIView, ProductDetailAPIView, CustomerOrderView, ManageOrderAPI, ManageOrderAPI,
+                     CustomerMonthlyBillView, MonthlyRevenueView,BulkOrderView,DeliveredOrdersCount
+)
 
 urlpatterns = [
     # Product API (Admin only)
