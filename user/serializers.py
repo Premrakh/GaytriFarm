@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Payment, QrCode
+from .models import User, Payment, BankAccount
 import re
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -147,8 +147,8 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = ['id','user', 'amount','created']
 
-class QrCodeSerializer(serializers.ModelSerializer):
+class BankAccountSerializer(serializers.ModelSerializer):
     class Meta:
-        model = QrCode
-        fields = ["id", "qr"]
-        read_only_fields = ["id"]
+        model = BankAccount
+        fields = ["user","account_no","bank_name","holder_name","ifsc_code","gst_no","qr"]
+        read_only_fields = ["user"]

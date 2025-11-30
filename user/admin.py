@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User,EmailVerificationToken, Payment, QrCode
+from .models import User,EmailVerificationToken, Payment, BankAccount
 # Register your models here.
 
 @admin.register(User)
@@ -22,4 +22,4 @@ class PaymentAdmin(admin.ModelAdmin):
     list_filter = ('user',)
     ordering = ('-created',)
 
-admin.site.register(QrCode)
+admin.site.register(BankAccount)

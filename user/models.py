@@ -87,9 +87,14 @@ class Payment(Base):
     amount = models.PositiveIntegerField()
     record_by =  models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,related_name="payment_record_by")
 
-class QrCode(Base):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="qr_code")
+class BankAccount(Base):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="bank_account")
+    account_no = models.CharField(max_length=20)
+    bank_name = models.CharField(max_length=255)
+    holder_name = models.CharField(max_length=255)
+    ifsc_code = models.CharField(max_length=11)
+    gst_no = models.CharField(max_length=15,null=True,blank=True)
     qr = models.ImageField(upload_to='qr_code/')
 
     def __str__(self):
-        return f"QR Code for {self.user.user_name}"
+        return f"Bank Account for {self.user.user_name}"

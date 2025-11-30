@@ -7,7 +7,7 @@ from .models import User, EmailVerificationToken, Payment
 from dairy.models import Order
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
         EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,
-        CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer)
+        CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer,BankAccountSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import send_forgot_password_email, send_verification_email
 from rest_framework.permissions import IsAuthenticated
@@ -700,47 +700,47 @@ class DistributorBalanceView(APIView):
         return wrap_response(True, code='balance_retrieve', data={"balance" : balance})
 
 
-class QrCodeView(APIView):
+class BankAccountView(APIView):
     permission_classes = [IsAuthenticated, IsVerified,]
 
     def get_object(self, user):
-        return getattr(user, "qr_code", None)
+        return getattr(user, "bank_account", None)
 
     def get(self, request):
-        qr_obj = self.get_object(request.user)
-        if not qr_obj:
-            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+        bank_obj = self.get_object(request.user)
+        if not bank_obj:
+            return wrap_response(False, code='bank_account_not_found', message="Bank account not found")
 
-        serializer = QrCodeSerializer(qr_obj)
-        return wrap_response(True, code='qr_retrieve', data=serializer.data)
+        serializer = BankAccountSerializer(bank_obj)
+        return wrap_response(True, code='bank_account_retrieve', data=serializer.data)
 
     def post(self, request):
         if self.get_object(request.user):
-            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+            return wrap_response(False, code='bank_account_exists', message="Bank account already exists")
 
-        serializer = QrCodeSerializer(data=request.data)
+        serializer = BankAccountSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=request.user)
-            return wrap_response(True, code='qrcode_created', data=serializer.data)
+            return wrap_response(True, code='bank_account_created', data=serializer.data)
 
         return wrap_response(False, code='invalid_data', errors=serializer.errors)
 
     def put(self, request):
-        qr_obj = self.get_object(request.user)
-        if not qr_obj:
-            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+        bank_obj = self.get_object(request.user)
+        if not bank_obj:
+            return wrap_response(False, code='bank_account_not_found', message="Bank account not found")
 
-        serializer = QrCodeSerializer(qr_obj, data=request.data, partial=True)
+        serializer = BankAccountSerializer(bank_obj, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return wrap_response(True, code='qrcode_updated', data=serializer.data)
+            return wrap_response(True, code='bank_account_updated', data=serializer.data)
 
         return wrap_response(False, code='invalid_data', errors=serializer.errors)
 
     def delete(self, request):
-        qr_obj = self.get_object(request.user)
-        if not qr_obj:
-            return wrap_response(False, code='qrcode_not_found', message="QR code not found")
+        bank_obj = self.get_object(request.user)
+        if not bank_obj:
+            return wrap_response(False, code='bank_account_not_found', message="Bank account not found")
 
-        qr_obj.delete()
-        return wrap_response(False, code='qrcode_deleted', message="QR deleted successfully")
+        bank_obj.delete()
+        return wrap_response(False, code='bank_account_deleted', message="Bank account deleted successfully")
