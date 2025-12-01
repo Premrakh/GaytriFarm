@@ -3,7 +3,7 @@ from uuid import uuid4
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from .manager import UserManager
-
+from django.utils import timezone
 class Base(models.Model):
     created = models.DateTimeField(auto_now_add=True, null=True)
     modified = models.DateTimeField(auto_now=True)
