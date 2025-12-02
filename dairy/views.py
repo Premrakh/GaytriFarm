@@ -194,7 +194,10 @@ class ManageOrderAPI(APIView):
             return wrap_response(False, "invalid_data", message=f"status must be either {Order.DELIVERED} or {Order.CANCELED}.")
         if not ids or type(ids) != list:
             return wrap_response(False, "invalid_data", message="ids must be a list.")
-        updated = Order.objects.filter(pk__in=ids, delivery_staff=user).update(status=status)
+        if user.role == User.DELIVERY_STAFF:
+            updated = Order.objects.filter(pk__in=ids, delivery_staff=user).update(status=status)
+        else:
+            updated = Order.objects.filter(pk__in=ids,delivery_staff__distributor=user).update(status=status)
         if updated == 0:
             return wrap_response(False, "order_not_found", message="Order not found")
         return wrap_response(True, "order_updated", message="Order status updated successfully.")
