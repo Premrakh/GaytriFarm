@@ -10,6 +10,7 @@ from user.models import User
 from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,
                           BulkOrderSerializer,)
 from django.db.models import Sum , F
+from django.db import transaction
 from datetime import date, timedelta, datetime
 from calendar import monthrange
 # Product Views
@@ -194,10 +195,61 @@ class ManageOrderAPI(APIView):
             return wrap_response(False, "invalid_data", message=f"status must be either {Order.DELIVERED} or {Order.CANCELED}.")
         if not ids or type(ids) != list:
             return wrap_response(False, "invalid_data", message="ids must be a list.")
+        
+        # Get orders with their current status before updating
         if user.role == User.DELIVERY_STAFF:
-            updated = Order.objects.filter(pk__in=ids, delivery_staff=user).update(status=status)
+            orders = Order.objects.filter(pk__in=ids, delivery_staff=user).select_related('customer')
         else:
-            updated = Order.objects.filter(pk__in=ids,delivery_staff__distributor=user).update(status=status)
+            orders = Order.objects.filter(pk__in=ids,delivery_staff__distributor=user).select_related('customer')
+        
+        if not orders.exists():
+            return wrap_response(False, "order_not_found", message="Order not found")
+        
+        # Update balance for each customer based on status change
+        customer_balance_updates = {}
+        
+        for order in orders:
+            customer = order.customer
+            old_status = order.status
+            
+            # Skip if status hasn't changed
+            if old_status == status:
+                continue
+            
+            # Calculate balance change
+            if status == Order.DELIVERED and old_status != Order.DELIVERED:
+                # Order is being delivered: subtract from balance
+                balance_change = -order.total_price
+            elif status == Order.CANCELED and old_status == Order.DELIVERED:
+                # Order was delivered but now canceled: add back to balance
+                balance_change = order.total_price
+            else:
+                # Other transitions don't affect balance
+                balance_change = 0
+            
+            if balance_change != 0:
+                if customer.user_id not in customer_balance_updates:
+                    customer_balance_updates[customer.user_id] = 0
+                customer_balance_updates[customer.user_id] += balance_change
+        
+        # Update order statuses
+        updated = orders.update(status=status)
+        
+        # Update customer balances in bulk (optimized for many customers)
+        if customer_balance_updates:
+            with transaction.atomic():
+                # Fetch all affected users in one query with their current balances
+                customer_ids = list(customer_balance_updates.keys())
+                affected_users = list(User.objects.filter(user_id__in=customer_ids).only('user_id', 'balance'))
+                
+                # Calculate new balance for each user
+                for user in affected_users:
+                    balance_change = customer_balance_updates[user.user_id]
+                    user.balance += balance_change
+                
+                # Bulk update all users in batches (much more efficient than individual updates)
+                User.objects.bulk_update(affected_users, ['balance'], batch_size=1000)
+        
         if updated == 0:
             return wrap_response(False, "order_not_found", message="Order not found")
         return wrap_response(True, "order_updated", message="Order status updated successfully.")

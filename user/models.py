@@ -42,6 +42,8 @@ class User(AbstractBaseUser, PermissionsMixin, Base):
     distributor = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,related_name="distributor_users")
     delivery_staff = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,related_name="delivery_staff_users")
     rank = models.PositiveIntegerField(default=0)
+    # ---------- FINANCIAL ----------
+    balance = models.IntegerField(default=0, help_text="Customer balance: payments - delivered orders")
     # ---------- STATUS FLAGS ----------
     is_email_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission, CustomerPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import OuterRef, Exists, Q, Sum
+from django.db.models import OuterRef, Exists, Q, Sum, F
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
 from .tasks import generate_customer_bill, generate_distributor_bill
@@ -650,7 +650,18 @@ class AddPayment(APIView):
             if user.role == User.DISTRIBUTOR:
                 if serializer.validated_data['user'].distributor != user:
                     return wrap_response(False, code='invalid_customer', message='Payement Add Failed')
+            
+            payment_user = serializer.validated_data['user']
+            payment_amount = serializer.validated_data['amount']
+            
+            # Save payment
             serializer.save(record_by=request.user)
+            
+            # Update customer balance: add payment amount
+            User.objects.filter(user_id=payment_user.user_id).update(
+                balance=F('balance') + payment_amount
+            )
+            
             return wrap_response(True, code='payment_added_successfully', message='Payement Added Successfully')
         return wrap_response(False, code='invalid_data', message='Payement Add Failed', errors=serializer.errors)
 

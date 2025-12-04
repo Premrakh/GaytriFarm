@@ -55,6 +55,13 @@ def create_daily_distributor_orders():
         count = len(distributor_orders)
         total_created += count
 
+        # Update distributor balance: subtract total amount of distributor orders
+        total_amount = sum(item['total_amount'] for item in grouped_orders)
+        User.objects.filter(user_id=distributor.user_id).update(
+            balance=F('balance') - total_amount
+        )
+
         logger.info(f"📝 Created {count} DistributorOrder entries for distributor {distributor.user_id}")
+        logger.info(f"💰 Updated balance for distributor {distributor.user_id}: -{total_amount}")
 
     logger.info(f"✅ Completed: Total {total_created} DistributorOrder entries created.")
