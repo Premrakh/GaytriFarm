@@ -754,7 +754,7 @@ class BankAccountView(APIView):
             return wrap_response(False, code='bank_account_not_found', message="Bank account not found")
 
         bank_obj.delete()
-        return wrap_response(False, code='bank_account_deleted', message="Bank account deleted successfully")
+        return wrap_response(True, code='bank_account_deleted', message="Bank account deleted successfully")
 
 
 class UserBillView(APIView):
