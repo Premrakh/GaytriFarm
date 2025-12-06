@@ -366,7 +366,7 @@ class CustomerView(APIView):
                 queryset = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True)
             else:
                 queryset = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted)
-            customers = queryset.annotate(is_next_order = next_month_order_exists).select_related('delivery_staff').order_by('rank')
+            customers = queryset.annotate(is_next_order = next_month_order_exists).select_related('delivery_staff','distributor').order_by('rank')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
