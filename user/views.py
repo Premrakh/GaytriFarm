@@ -361,11 +361,11 @@ class CustomerView(APIView):
             )
 
             if user.role == User.DISTRIBUTOR:
-                queryset = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted)
+                queryset = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted,is_active=True)
             elif user.role == User.DELIVERY_STAFF:
-                queryset = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True)
+                queryset = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True,is_active=True)
             else:
-                queryset = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted)
+                queryset = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted,is_active=True)
             customers = queryset.annotate(is_next_order = next_month_order_exists).select_related('delivery_staff','distributor').order_by('rank')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
@@ -405,9 +405,9 @@ class DeliveryStaffView(APIView):
         if role_accepted in ["accept", "pending"]:
             role_accepted = True if role_accepted == "accept" else None
             if user.role == User.DISTRIBUTOR:
-                customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor=user, role_accepted=role_accepted).order_by('-created')
+                customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor=user, role_accepted=role_accepted,is_active=True).order_by('-created')
             elif distributor_id:
-                customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor_id=distributor_id, role_accepted=role_accepted).order_by('-created')
+                customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor_id=distributor_id, role_accepted=role_accepted,is_active=True).order_by('-created')
             else:
                 return wrap_response(False, "distributor_id_required", message=" distributor_id must be required for admin.")
             serializer = EnrollUsersSerializer(customers, many=True)
@@ -433,7 +433,7 @@ class DistributorView(APIView):
         role_accepted = request.query_params.get('role_accepted')
         if role_accepted in ["accept", "pending"]:
             role_accepted = True if role_accepted == "accept" else None
-            users = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=role_accepted).order_by('-created')
+            users = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=role_accepted,is_active=True).order_by('-created')
             serializer = EnrollUsersSerializer(users, many=True)
             return wrap_response(True, "distributors_list", data=serializer.data, message="Distributors fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
