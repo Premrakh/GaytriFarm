@@ -3,9 +3,9 @@ from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (
-    IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission, DistributorOrStaffPermission
+    IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission, DistributorOrStaffPermission, AdminOrDistributorPermission
 )
-from .models import Product, Order
+from .models import Product, Order, DistributorOrder
 from user.models import User
 from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,
                           BulkOrderSerializer,)
@@ -305,7 +305,7 @@ class CustomerMonthlyBillView(APIView):
     
 
 class MonthlyRevenueView(APIView):
-    permission_classes = [IsAuthenticated, IsVerified, DistributorPermission]
+    permission_classes = [IsAuthenticated, IsVerified, AdminOrDistributorPermission]
 
     def get(self, request):
         month = request.query_params.get('month')
@@ -317,14 +317,18 @@ class MonthlyRevenueView(APIView):
             year = int(year)
         except ValueError:
             return wrap_response(False, "invalid_month_year", message="month and year must be integers")
-        
-        total_revenue = Order.objects.filter(
-            customer__distributor=request.user,
-            status=Order.DELIVERED,
-            date__month=month,
-            date__year=year
-        ).aggregate(total_revenue=Sum('total_price'))['total_revenue'] or 0
-        
+        if request.user.superuser:
+            total_revenue = DistributorOrder.objects.filter(
+                created__month=month,
+                created__year=year
+            ).aggregate(total_revenue=Sum('total_price'))['total_revenue'] or 0
+        else:
+            total_revenue = Order.objects.filter(
+                customer__distributor=request.user,
+                status=Order.DELIVERED,
+                date__month=month,
+                date__year=year
+            ).aggregate(total_revenue=Sum('total_price'))['total_revenue'] or 0
         return wrap_response(True, "monthly_revenue", data={"month": month, "year": year, "total_revenue": total_revenue}, message="Monthly revenue fetched successfully.")
 
 
