@@ -96,7 +96,7 @@ class BankAccount(Base):
     holder_name = models.CharField(max_length=255)
     ifsc_code = models.CharField(max_length=11)
     gst_no = models.CharField(max_length=15,null=True,blank=True)
-    qr = models.ImageField(upload_to='qr_code/')
+    qr = models.ImageField(upload_to='qr_code/',null=True,blank=True)
 
     def __str__(self):
         return f"Bank Account for {self.user.user_name}"
