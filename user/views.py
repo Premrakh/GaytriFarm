@@ -605,7 +605,6 @@ class ActiveDeactivateDeliveryStaff(APIView):
 
         staff = User.objects.filter(
             user_id__in=[staff_id,new_staff_id],
-            role=User.DELIVERY_STAFF,
             distributor=distributor,
             is_active=True
         )
