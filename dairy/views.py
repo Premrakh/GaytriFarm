@@ -317,7 +317,7 @@ class MonthlyRevenueView(APIView):
             year = int(year)
         except ValueError:
             return wrap_response(False, "invalid_month_year", message="month and year must be integers")
-        if request.user.superuser:
+        if request.user.is_superuser:
             total_revenue = DistributorOrder.objects.filter(
                 created__month=month,
                 created__year=year
