@@ -409,7 +409,7 @@ class DeliveryStaffView(APIView):
             elif distributor_id:
                 customers = User.objects.filter(role=User.DELIVERY_STAFF, distributor_id=distributor_id, role_accepted=role_accepted,is_active=True).order_by('-created')
             else:
-                return wrap_response(False, "distributor_id_required", message=" distributor_id must be required for admin.")
+                customers = User.objects.filter(role=User.DELIVERY_STAFF, role_accepted=role_accepted,is_active=True).order_by('-created')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "staff_list", data=serializer.data, message="Staff fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
