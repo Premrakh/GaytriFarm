@@ -576,7 +576,11 @@ class ActiveDeactiveCustomer(APIView):
         return wrap_response(True, code='customer_retrieve', data=serializer.data)
 
 class ActiveDeactivateDeliveryStaff(APIView):
-    permission_classes = [IsAuthenticated, DistributorPermission]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), AdminOrDistributorPermission()]
+        else:
+            return [IsAuthenticated(), DistributorPermission()]
 
     def post(self, request):
         distributor = request.user
