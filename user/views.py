@@ -571,7 +571,10 @@ class ActiveDeactiveCustomer(APIView):
         return wrap_response(True, f"customer_{flag}", message=f"Customer {flag} successfully")
 
     def get(self,request):
-        customers = User.objects.filter(is_active=False, role = User.CUSTOMER)
+        if request.user.is_superuser:
+            customers = User.objects.filter(is_active=False, role = User.CUSTOMER)
+        else:
+            customers = User.objects.filter(is_active=False, role = User.CUSTOMER, distributor=request.user)
         serializer = EnrollUsersSerializer(customers, many=True)
         return wrap_response(True, code='customer_retrieve', data=serializer.data)
 
@@ -638,9 +641,12 @@ class ActiveDeactivateDeliveryStaff(APIView):
         )
 
     def get(self,request):
-        customers = User.objects.filter(is_active=False, role = User.DELIVERY_STAFF)
-        serializer = EnrollUsersSerializer(customers, many=True)
-        return wrap_response(True, code='customer_retrieve', data=serializer.data)
+        if request.user.is_superuser:
+            delivery_staff = User.objects.filter(is_active=False, role = User.DELIVERY_STAFF)
+        else:
+            delivery_staff = User.objects.filter(is_active=False, role = User.DELIVERY_STAFF, distributor=request.user)
+        serializer = EnrollUsersSerializer(delivery_staff, many=True)
+        return wrap_response(True, code='delivery_staff_retrieve', data=serializer.data)
 
 
 class AddPayment(APIView):
