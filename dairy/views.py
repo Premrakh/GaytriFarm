@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (
     IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission, DistributorOrStaffPermission, AdminOrDistributorPermission
 )
-from .models import Product, Order, DistributorOrder
+from .models import Product, Order, DistributorOrder,CacheOrder
 from user.models import User
 from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,
                           BulkOrderSerializer,)
@@ -79,16 +79,16 @@ class CustomerOrderView(APIView):
             orders = Order.objects.filter(
                 customer=request.user,
                 product_id=product_id,
-                created__year=now.year,
-                created__month=now.month
-            ).order_by('created')
+                date__year=now.year,
+                date__month=now.month
+            ).order_by('date')
         else:
             orders = Order.objects.filter(
                 customer=request.user,
                 product__is_primary=True,
-                created__year=now.year,
-                created__month=now.month
-            ).order_by('created')
+                date__year=now.year,
+                date__month=now.month
+            ).order_by('date')
         serializer = CustomerOrderSerializer(orders, many=True)
         return wrap_response(True, "orders_fetched", message="Orders fetched successfully", data=serializer.data)
 
@@ -332,7 +332,7 @@ class MonthlyRevenueView(APIView):
         return wrap_response(True, "monthly_revenue", data={"month": month, "year": year, "total_revenue": total_revenue}, message="Monthly revenue fetched successfully.")
 
 
-class BulkOrderView(APIView):
+class StartOrderView(APIView):
     permission_classes = [IsAuthenticated, IsVerified, CustomerPermission]
 
     def post(self, request):
@@ -344,6 +344,17 @@ class BulkOrderView(APIView):
         product = data['product']
         base_quantity = data['quantity']
         order_type = data['type']
+
+        cache_order = CacheOrder.objects.filter(customer=request.user)
+        if cache_order.exists():
+            cache_order = cache_order.first()
+            if not (cache_order.product == product and cache_order.quantity == base_quantity and cache_order.order_type == order_type):
+                cache_order.product = product
+                cache_order.quantity = base_quantity
+                cache_order.order_type = order_type
+                cache_order.save()
+        else:
+            CacheOrder.objects.create(customer=request.user,product=product,quantity=base_quantity,order_type=order_type)
         customer = request.user
         delivery_staff = getattr(request.user, "delivery_staff", None)
 
@@ -400,6 +411,10 @@ class BulkOrderView(APIView):
         if orders_to_create:
             Order.objects.bulk_create(orders_to_create)
 
+        if customer.is_pause:
+            customer.is_pause = False
+            customer.save(update_fields=["is_pause"])
+
         return wrap_response(
             True,
             "orders_created",
@@ -407,25 +422,34 @@ class BulkOrderView(APIView):
             data=serializer.data
         )
 
+class DeleteOrderView(APIView):
+    permission_classes = [IsAuthenticated, IsVerified, CustomerPermission]
+
     def delete(self,request):
         ids = request.data.get("ids")
-        if ids:
-            if not isinstance(ids, list):
-                return wrap_response(False, "invalid_id", message="ids must be a list.")
-            
-            # delete orders from given ids
-            deleted_count, _ = Order.objects.filter(customer=request.user,id__in=ids).delete()
-            return wrap_response(True, "deleted", message=f"{deleted_count} orders deleted.")
+        if not ids or not isinstance(ids, list):
+            return wrap_response(False, "invalid_id", message="ids must be a list.")
+
+        deleted_count, _ = Order.objects.filter(customer=request.user,id__in=ids).delete()
+        return wrap_response(True, "deleted", message=f"{deleted_count} orders deleted.")
     
-        # CASE 2: No ids → delete orders where date is minimum next day
+
+class PauseOrderView(APIView):
+    permission_classes = [IsAuthenticated, IsVerified, CustomerPermission]
+
+    def delete(self,request):
+        user = request.user
         today = timezone.now().date()
         next_day = today + timedelta(days=1)
 
-        # only delete orders where date == next_day
+        # delete orders from next_day
         deleted_count, _ = Order.objects.filter(customer=request.user,date__gte=next_day).delete()
+        user.is_pause = True
+        user.save(update_fields=["is_pause"])
 
         return wrap_response(True, "deleted", message=f"{deleted_count} orders deleted for next day.")
-        
+
+
 
 class DeliveredOrdersCount(APIView):
     permission_classes = [IsAuthenticated,IsVerified, DeliveryStaffPermission]
@@ -444,3 +468,4 @@ class DeliveredOrdersCount(APIView):
                             product__is_primary=True
                             ).aggregate(total_qty=Sum('quantity'))
         return wrap_response(True, "orders_count", data=orders_count, message="Orders fetched successfully.")
+

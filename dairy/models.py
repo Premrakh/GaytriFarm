@@ -45,3 +45,12 @@ class DistributorOrder(Base):
     
     def __str__(self):
         return f"Order for {self.distributor.user_name}"
+
+class CacheOrder(Base):
+    customer = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cache_order')
+    product = models.OneToOneField(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    order_type = models.CharField(max_length=50)
+    
+    def __str__(self):
+        return f"Cache Order for {self.customer.user_name}"

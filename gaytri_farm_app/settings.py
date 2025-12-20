@@ -196,4 +196,8 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'dairy.tasks.create_daily_distributor_orders',
         'schedule': crontab(hour=7, minute=0),  # every day at 07:00
     },
+    'auto_order_create': {
+        'task': 'dairy.tasks.auto_order_create',
+        'schedule': crontab(day_of_month=25, hour=1, minute=0),  # 25th of every month at 01:00
+    },
 }

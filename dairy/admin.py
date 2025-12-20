@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Order, DistributorOrder
+from .models import Product, Order, DistributorOrder,CacheOrder
 
 
 @admin.register(Product)
@@ -16,3 +16,8 @@ class OrderAdmin(admin.ModelAdmin):
 class DistributorOrderAdmin(admin.ModelAdmin):
     list_display = ('id', 'distributor', 'product', 'quantity', 'total_price','created')
     list_filter = ('distributor', 'product', 'created')
+
+@admin.register(CacheOrder)
+class CacheOrderAdmin(admin.ModelAdmin):
+    list_display = ('id', 'customer', 'product', 'quantity', 'order_type','created')
+    list_filter = ('customer',)
