@@ -79,15 +79,15 @@ class CustomerOrderView(APIView):
             orders = Order.objects.filter(
                 customer=request.user,
                 product_id=product_id,
-                date__year=now.year,
-                date__month=now.month
+                # date__year=now.year,
+                # date__month=now.month
             ).order_by('date')
         else:
             orders = Order.objects.filter(
                 customer=request.user,
                 product__is_primary=True,
-                date__year=now.year,
-                date__month=now.month
+                # date__year=now.year,
+                # date__month=now.month
             ).order_by('date')
         serializer = CustomerOrderSerializer(orders, many=True)
         return wrap_response(True, "orders_fetched", message="Orders fetched successfully", data=serializer.data)

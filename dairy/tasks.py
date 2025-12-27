@@ -91,7 +91,7 @@ def auto_order_create():
     # Get eligible customers: have cache_order, not paused
     cache_orders = CacheOrder.objects.filter(
         customer__is_pause=False
-    ).select_related('customer', 'customer__delivery_staff')
+    ).select_related('customer__delivery_staff', 'product')
     
     if not cache_orders.exists():
         logger.info("No eligible customers found with cache orders")
