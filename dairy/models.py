@@ -48,7 +48,7 @@ class DistributorOrder(Base):
 
 class CacheOrder(Base):
     customer = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cache_order')
-    product = models.OneToOneField(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cache_products')
     quantity = models.PositiveIntegerField()
     order_type = models.CharField(max_length=50)
     
