@@ -157,10 +157,10 @@ class BankAccountSerializer(serializers.ModelSerializer):
 
 
 class UserBillSerializer(serializers.ModelSerializer):
-    
+    user_name = serializers.CharField(source='user.user_name', read_only=True)
     class Meta:
         model = UserBill
-        fields = ['id', 'user', 'type',  'pdf_file', 'due_date','created']
+        fields = ['id', 'user_id', 'user_name', 'type',  'pdf_file', 'due_date','created']
 
 class GenerateBillSerializer(serializers.Serializer):
     user_id = serializers.CharField()

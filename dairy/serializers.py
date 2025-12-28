@@ -52,3 +52,17 @@ class BulkOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['product', 'quantity',  'type']
+
+class AdminBulkOrderSerializer(BulkOrderSerializer):
+    class Meta:
+        model = Order
+        fields = ['customer','product', 'quantity',  'type']
+
+class AdminDeleteOrderSerializer(serializers.Serializer):
+    """Serializer for admin to delete specific orders for a customer"""
+    customer_id = serializers.IntegerField(required=True)
+    order_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=True,
+    )
+

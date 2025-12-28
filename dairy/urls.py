@@ -1,7 +1,13 @@
 from django.urls import path
+from rest_framework.routers import DefaultRouter
 from .views import (ProductDetailAPIView, ProductDetailAPIView, CustomerOrderView, ManageOrderAPI, ManageOrderAPI,
-                     CustomerMonthlyBillView, MonthlyRevenueView,StartOrderView,DeliveredOrdersCount, DeleteOrderView, PauseOrderView,
+                     CustomerMonthlyBillView, MonthlyRevenueView,StartOrderView,DeliveredOrdersCount, DeleteOrderView, PauseOrderView,OrderCountView,
+                     OrderHandlerView
 )
+
+# Create a router and register the ViewSet
+router = DefaultRouter()
+router.register(r'order_handler', OrderHandlerView, basename='order_handler')
 
 urlpatterns = [
     # Product API (Admin only)
@@ -21,4 +27,9 @@ urlpatterns = [
     path('customer_monthly_bill/', CustomerMonthlyBillView.as_view()),
     path('revenue/', MonthlyRevenueView.as_view()),
     path('delivered_orders_count/', DeliveredOrdersCount.as_view()),
+    path('orders_count/', OrderCountView.as_view()),
 ]
+
+# Include router URLs
+urlpatterns += router.urls
+

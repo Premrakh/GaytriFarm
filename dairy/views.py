@@ -1,6 +1,8 @@
 from django.utils import timezone
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (
     IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission, DistributorOrStaffPermission, AdminOrDistributorPermission
@@ -8,11 +10,11 @@ from gaytri_farm_app.custom_permission import (
 from .models import Product, Order, DistributorOrder,CacheOrder
 from user.models import User
 from .serializers import (ProductSerializer,OrderCreateSerializer,ManagerOrderSerializer,CustomerBillDetailSerializer,CustomerOrderSerializer,
-                          BulkOrderSerializer,)
+                          BulkOrderSerializer, AdminBulkOrderSerializer, AdminDeleteOrderSerializer)
 from django.db.models import Sum , F
 from django.db import transaction
-from datetime import date, timedelta, datetime
-from calendar import monthrange
+from datetime import timedelta, datetime
+from .utils import create_bulk_orders
 # Product Views
 class ProductDetailAPIView(APIView):
     
@@ -356,69 +358,14 @@ class StartOrderView(APIView):
         else:
             CacheOrder.objects.create(customer=request.user,product=product,quantity=base_quantity,order_type=order_type)
         customer = request.user
-        delivery_staff = getattr(request.user, "delivery_staff", None)
-
-        today = date.today()
-        start_date = today + timedelta(days=1)  # start from tomorrow
-        orders_to_create = []
-
-        # create orders for upcoming 3 months: remainder of this month (from tomorrow) + next 2 months
-        for month_offset in range(3):
-            # compute year and month for this offset
-            month_num = start_date.month + month_offset
-            year = start_date.year + (month_num - 1) // 12
-            month = ((month_num - 1) % 12) + 1
-
-            last_day = monthrange(year, month)[1]
-            # determine starting day for the first month (start_date.day), else 1
-            start_day = start_date.day if month_offset == 0 else 1
-
-            for day in range(start_day, last_day + 1):
-                order_date = date(year, month, day)
-                # skip any past dates just in case
-                if order_date <= today:
-                    continue
-
-                # Use 0-based index within month for patterns
-                idx = day - 1
-
-                if order_type == 'every_day':
-                    quantity = base_quantity
-                elif order_type == 'alternate_day':
-                    # keep 1st,3rd,5th... (idx 0,2,4 => even idx)
-                    if idx % 2 != 0:
-                        continue
-                    quantity = base_quantity
-                elif order_type == 'one_two_cycle':
-                    # alternate 1 and 2 quantities each day: use idx parity
-                    quantity = 2 if idx % 2 != 0 else 1
-                else:
-                    # unknown type skip
-                    continue
-
-                orders_to_create.append(
-                    Order(
-                        customer=customer,
-                        delivery_staff=delivery_staff,
-                        product=product,
-                        quantity=quantity,
-                        total_price=product.price * quantity,
-                        date=order_date
-                    )
-                )
-
-        # Bulk create all orders
-        if orders_to_create:
-            Order.objects.bulk_create(orders_to_create)
-
-        if customer.is_pause:
-            customer.is_pause = False
-            customer.save(update_fields=["is_pause"])
+        
+        # Create bulk orders using utility function
+        orders_count = create_bulk_orders(customer, product, base_quantity, order_type)
 
         return wrap_response(
             True,
             "orders_created",
-            message=f"{len(orders_to_create)} orders created successfully for upcoming 3 months",
+            message=f"{orders_count} orders created successfully for upcoming 3 months",
             data=serializer.data
         )
 
@@ -468,4 +415,146 @@ class DeliveredOrdersCount(APIView):
                             product__is_primary=True
                             ).aggregate(total_qty=Sum('quantity'))
         return wrap_response(True, "orders_count", data=orders_count, message="Orders fetched successfully.")
+
+class OrderCountView(APIView):
+    permission_classes = [IsAuthenticated, AdminOrDistributorPermission]
+    def post(self, request):
+        date_str = request.data.get('date')
+        user = request.user
+        if not date_str:
+            return wrap_response(False, "date_required", message="date query parameter is required (format: YYYY-MM-DD)")
+        
+        try:
+            order_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return wrap_response(False, "invalid_date", message="Invalid date format. Use YYYY-MM-DD")
+        
+        # Query orders for the specified date and aggregate by product
+        if user.is_superuser:
+            orders = Order.objects.filter(
+                date=order_date,
+                product__is_primary=True
+            ).values(product_name=F('product__name')
+            ).annotate(count=Sum('quantity'))
+        else:
+            orders = Order.objects.filter(
+                date=order_date,
+                product__is_primary=True,
+                delivery_staff__distributor=user
+            ).values(product_name=F('product__name')
+            ).annotate(count=Sum('quantity'))
+        
+        response_data = list(orders)
+        
+        if not response_data:
+            return wrap_response(False, "no_orders", message=f"No orders found for date {date_str}")
+        
+        return wrap_response(True, "order_count", data=response_data, message="Order count fetched successfully.")
+
+
+class OrderHandlerView(ViewSet):
+    """
+    ViewSet for admin/distributor to manage customer orders.
+    Provides three separate endpoints using @action decorator:
+    - POST /order_handler/create_bulk/ - Create bulk orders for a customer
+    - POST /order_handler/pause/ - Pause orders for a customer
+    - POST /order_handler/delete/ - Delete specific orders for a customer
+    """
+    permission_classes = [IsAuthenticated, AdminOrDistributorPermission]
+    
+    @action(detail=False, methods=['post'], url_path='start')
+    def create_bulk(self, request):
+        """Create bulk orders for a customer"""
+        serializer = AdminBulkOrderSerializer(data=request.data)
+        if not serializer.is_valid():
+            return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
+        
+        # Get validated data
+        customer= serializer.validated_data['customer']
+        product = serializer.validated_data['product']
+        base_quantity = serializer.validated_data['quantity']
+        order_type = serializer.validated_data['type']
+        
+        # Get customer
+        if not request.user.is_superuser:
+            if customer.distributor != request.user:
+                return wrap_response(False, "unauthorized", message="You are not authorized to create orders for this customer")
+
+        # Create bulk orders using utility function
+        orders_count = create_bulk_orders(customer, product, base_quantity, order_type)
+        
+        return wrap_response(
+            True,
+            "orders_created",
+            message=f"{orders_count} orders created successfully for customer {customer.user_name}"
+        )
+    
+    @action(detail=False, methods=['post'], url_path='pause')
+    def pause(self, request):
+        """Pause orders for a customer (delete all future orders)"""
+        customer_id = request.data.get('customer_id')
+        if not customer_id:
+            return wrap_response(False, "customer_id_required", message="customer_id is required")
+        # Get customer
+        if request.user.is_superuser:
+            customer = get_object_or_none(User, user_id=customer_id, role=User.CUSTOMER)
+        else:
+            customer = get_object_or_none(User, user_id=customer_id, role=User.CUSTOMER, distributor=request.user)
+        if not customer:
+            return wrap_response(False, "customer_not_found", message="Customer not found")
+        
+        # Delete future orders (from tomorrow onwards)
+        today = timezone.now().date()
+        next_day = today + timedelta(days=1)
+        
+        deleted_count, _ = Order.objects.filter(
+            customer=customer,
+            date__gte=next_day
+        ).delete()
+        
+        # Mark customer as paused
+        customer.is_pause = True
+        customer.save(update_fields=["is_pause"])
+        
+        return wrap_response(
+            True,
+            "orders_paused",
+            message=f"{deleted_count} future orders deleted for customer {customer.user_name}")
+    
+    @action(detail=False, methods=['post'], url_path='delete')
+    def delete(self, request):
+        """Delete specific orders for a customer"""
+        serializer = AdminDeleteOrderSerializer(data=request.data)
+        if not serializer.is_valid():
+            return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
+        
+        customer_id = serializer.validated_data['customer_id']
+        order_ids = serializer.validated_data['order_ids']
+        
+        # Get customer
+        if request.user.is_superuser:
+            customer = get_object_or_none(User, user_id=customer_id, role=User.CUSTOMER)
+        else:
+            customer = get_object_or_none(User, user_id=customer_id, role=User.CUSTOMER, distributor=request.user)
+        if not customer:
+            return wrap_response(False, "customer_not_found", message="Customer not found")
+        
+        # Delete specified orders
+        deleted_count, _ = Order.objects.filter(
+            customer=customer,
+            id__in=order_ids
+        ).delete()
+        
+        if deleted_count == 0:
+            return wrap_response(
+                False,
+                "no_orders_deleted",
+                message="No orders found with the provided IDs for this customer"
+            )
+        
+        return wrap_response(
+            True,
+            "orders_deleted",
+            message=f"{deleted_count} orders deleted for customer {customer.user_name}"
+        )
 
