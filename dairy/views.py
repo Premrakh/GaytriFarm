@@ -433,13 +433,11 @@ class OrderCountView(APIView):
         if user.is_superuser:
             orders = Order.objects.filter(
                 date=order_date,
-                product__is_primary=True
             ).values(product_name=F('product__name')
             ).annotate(count=Sum('quantity'))
         else:
             orders = Order.objects.filter(
                 date=order_date,
-                product__is_primary=True,
                 delivery_staff__distributor=user
             ).values(product_name=F('product__name')
             ).annotate(count=Sum('quantity'))
