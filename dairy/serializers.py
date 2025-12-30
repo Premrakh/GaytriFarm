@@ -59,10 +59,8 @@ class AdminBulkOrderSerializer(BulkOrderSerializer):
         fields = ['customer','product', 'quantity',  'type']
 
 class AdminDeleteOrderSerializer(serializers.Serializer):
-    """Serializer for admin to delete specific orders for a customer"""
+    """Serializer for admin to delete orders within a date range for a customer"""
     customer_id = serializers.IntegerField(required=True)
-    order_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        required=True,
-    )
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
 

@@ -3,7 +3,7 @@ from .views import (UserRegistrationView, UserLoginView, EmailVerificationView, 
                     SendEmailTokenView, UserLogoutView,UpdateFCMTokenView,ForgotPasswordView,
                     ResetPasswordView, AccountView,DistributorView, CustomerView , DeliveryStaffView, DistributorView,
                     ChangePasswordView,AddCustomer,RouteSetupView,UpdateCustomerDelievery, ActiveDeactiveCustomer, ActiveDeactiveCustomer, ActiveDeactivateDeliveryStaff,
-                    AddPayment, CustomerBalanceView, DistributorBalanceView , BankAccountView,UserBillView,GenerateBillView
+                    AddPayment, CustomerBalanceView, DistributorBalanceView , BankAccountView,UserBillView,GenerateBillView,UserStatusView
                     )
 urlpatterns = [
     path('register/', UserRegistrationView.as_view()),
@@ -32,4 +32,5 @@ urlpatterns = [
     path('bank_account/', BankAccountView.as_view(), name="bank_account"),
     path('bills/', UserBillView.as_view()),
     path('generate_bill/', GenerateBillView.as_view()),
+    path('status/', UserStatusView.as_view()),
 ]   

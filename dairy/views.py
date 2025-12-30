@@ -461,7 +461,7 @@ class OrderHandlerView(ViewSet):
     permission_classes = [IsAuthenticated, AdminOrDistributorPermission]
     
     @action(detail=False, methods=['post'], url_path='start')
-    def create_bulk(self, request):
+    def start(self, request):
         """Create bulk orders for a customer"""
         serializer = AdminBulkOrderSerializer(data=request.data)
         if not serializer.is_valid():
@@ -521,13 +521,14 @@ class OrderHandlerView(ViewSet):
     
     @action(detail=False, methods=['post'], url_path='delete')
     def delete(self, request):
-        """Delete specific orders for a customer"""
+        """Delete orders within a date range for a customer"""
         serializer = AdminDeleteOrderSerializer(data=request.data)
         if not serializer.is_valid():
             return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
         
         customer_id = serializer.validated_data['customer_id']
-        order_ids = serializer.validated_data['order_ids']
+        start_date = serializer.validated_data['start_date']
+        end_date = serializer.validated_data['end_date']
         
         # Get customer
         if request.user.is_superuser:
@@ -537,22 +538,23 @@ class OrderHandlerView(ViewSet):
         if not customer:
             return wrap_response(False, "customer_not_found", message="Customer not found")
         
-        # Delete specified orders
+        # Delete orders within the date range
         deleted_count, _ = Order.objects.filter(
             customer=customer,
-            id__in=order_ids
+            date__gte=start_date,
+            date__lte=end_date
         ).delete()
         
         if deleted_count == 0:
             return wrap_response(
                 False,
                 "no_orders_deleted",
-                message="No orders found with the provided IDs for this customer"
+                message=f"No orders found between {start_date} and {end_date} for this customer"
             )
         
         return wrap_response(
             True,
             "orders_deleted",
-            message=f"{deleted_count} orders deleted for customer {customer.user_name}"
+            message=f"{deleted_count} orders deleted for customer {customer.user_name} between {start_date} and {end_date}"
         )
 

@@ -798,3 +798,12 @@ class GenerateBillView(APIView):
         else:
             generate_distributor_bill(month, year, users)
         return wrap_response(True, code='bill_generated', message="Bill generated successfully")
+
+class UserStatusView(APIView):
+
+    def get(self,request):
+        user_id = request.query_params.get('user_id')
+        user = get_object_or_none(User, user_id=user_id)
+        if not user:
+            return wrap_response(False, code='user_not_found', message="User not found")
+        return wrap_response(True, code='user_mode_retrieve', data=user.is_pause)
