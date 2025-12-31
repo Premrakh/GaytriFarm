@@ -348,17 +348,17 @@ class CustomerView(APIView):
         user = request.user
         role_accepted = request.query_params.get('role_accepted')
         if role_accepted in ["accept", "pending"]:
-            today = timezone.now().date()
-            next_month_start = today.replace(day=1) + relativedelta(months=1)
-            next_month_end = next_month_start + relativedelta(day=31) 
             role_accepted = True if role_accepted == "accept" else None
+            # today = timezone.now().date()
+            # next_month_start = today.replace(day=1) + relativedelta(months=1)
+            # next_month_end = next_month_start + relativedelta(day=31) 
             # Subquery: check if order exists for that customer
-            next_month_order_exists = Exists(
-                Order.objects.filter(
-                    customer=OuterRef("pk"),
-                    date__range=(next_month_start, next_month_end)
-                )
-            )
+            # next_month_order_exists = Exists(
+            #     Order.objects.filter(
+            #         customer=OuterRef("pk"),
+            #         date__range=(next_month_start, next_month_end)
+            #     )
+            # )
 
             if user.role == User.DISTRIBUTOR:
                 queryset = User.objects.filter(role=User.CUSTOMER, distributor=user, role_accepted=role_accepted,is_active=True)
@@ -366,7 +366,7 @@ class CustomerView(APIView):
                 queryset = User.objects.filter(role=User.CUSTOMER, delivery_staff=user, role_accepted=True,is_active=True)
             else:
                 queryset = User.objects.filter(role=User.CUSTOMER, role_accepted=role_accepted,is_active=True)
-            customers = queryset.annotate(is_next_order = next_month_order_exists).select_related('delivery_staff','distributor').order_by('rank')
+            customers = queryset.select_related('delivery_staff','distributor').order_by('rank')
             serializer = EnrollUsersSerializer(customers, many=True)
             return wrap_response(True, "customers_list", data=serializer.data, message="Customers fetched successfully.")
         return wrap_response(False, "invalid_role_accepted", message="role_accepted must be accept or pending.")
