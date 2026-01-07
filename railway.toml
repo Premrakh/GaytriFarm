@@ -3,6 +3,7 @@ builder = "nixpacks"
 buildCommand = "chmod +x build.sh && ./build.sh"
 
 [deploy]
+releaseCommand = "python manage.py migrate --noinput"
 startCommand = "gunicorn gaytri_farm_app.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
