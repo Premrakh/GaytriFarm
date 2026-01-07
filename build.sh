@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Check if Poetry is installed, if not install it
+if ! command -v poetry &> /dev/null
+then
+    echo "Poetry not found, installing..."
+    pip install poetry
+    poetry config virtualenvs.create false
+fi
+
+# Install dependencies
+echo "Installing dependencies..."
+poetry install --no-dev
+
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
+# Run migrations
+echo "Running migrations..."
+python manage.py migrate --noinput
+
+echo "Build completed successfully!"
