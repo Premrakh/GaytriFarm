@@ -4,9 +4,11 @@
 if ! command -v poetry &> /dev/null
 then
     echo "Poetry not found, installing..."
-    pip install poetry
-    poetry config virtualenvs.create false
+    pip install poetry==1.7.1
 fi
+
+# Configure Poetry to not create virtual environments
+poetry config virtualenvs.create false
 
 # Install dependencies
 echo "Installing dependencies..."
