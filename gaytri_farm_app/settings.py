@@ -29,8 +29,8 @@ SECRET_KEY = 'django-insecure-tpzb33%8@rfd4^mrv57wg--=tp8mu%bg-tskddz^z6q6@rhnzf
 
 if environment=='production':
     DEBUG = False
-    ALLOWED_HOSTS = ['.onrender.com']
-    CSRF_TRUSTED_ORIGINS = []
+    ALLOWED_HOSTS = ['gaytrifarm-production.up.railway.app']
+    CSRF_TRUSTED_ORIGINS = ["https://gaytrifarm-production.up.railway.app"]
 else:
     DEBUG = True
     ALLOWED_HOSTS = ["*"]
