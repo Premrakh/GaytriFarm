@@ -1,5 +1,6 @@
 import logging
 from django.utils import timezone
+from gaytri_farm_app.utils import ist_timezone
 from django.db.models import Sum , F
 
 from .models import User, UserBill
@@ -91,7 +92,7 @@ def generate_customer_bill(target_month, target_year,users=None):
                 "total_items": total_items,
                 "total_amount": grand_total,
                 "product_breakdown": product_breakdown,
-                "generated_at": timezone.now().isoformat(),
+                "generated_at": ist_timezone().isoformat(),
             }
 
             logger.info(f"Generating PDF for {user.user_name}...")
@@ -171,7 +172,7 @@ def generate_distributor_bill(target_month, target_year,users=None):
                 "total_items": total_items,
                 "total_amount": grand_total,
                 "product_breakdown": product_breakdown,
-                "generated_at": timezone.now().isoformat(),
+                "generated_at": ist_timezone().isoformat(),
             }
 
             logger.info(f"Generating PDF for {user.user_name}...")
@@ -199,7 +200,7 @@ def generate_monthly_bills_task():
     Celery task to generate monthly bills for all users.
     Same logic as the Django management command.
     """
-    now = timezone.now()
+    now = ist_timezone()
     target_month = now.month - 1 if now.month > 1 else 12
     target_year = now.year if now.month > 1 else now.year - 1
 

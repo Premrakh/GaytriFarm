@@ -1,7 +1,9 @@
 from django.core.mail import send_mail
 from cryptography.fernet import Fernet
 import random
+from gaytri_farm_app.utils import ist_timezone
 from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
 
 key=b'njVD0FDf5dqAJ7YREQRNVXRUQ39XmK29uIqz357Jj0s='
@@ -44,7 +46,7 @@ def send_verification_email(email, token):
 
     
 def generate_token(user_id):
-    token =  str(random.randint(10000,99999)) + '--' +  str(timezone.now()+timezone.timedelta(minutes=5))  + '--' + str(user_id)
+    token =  str(random.randint(10000,99999)) + '--' +  str(ist_timezone()+timedelta(minutes=5))  + '--' + str(user_id)
     encrypted_token = fernet.encrypt(token.encode()).decode()
     return encrypted_token
 
@@ -55,7 +57,7 @@ def unzip_token(token):
         expiry_time_str = parts[1]
         expiry_time = timezone.datetime.fromisoformat(expiry_time_str)
 
-        if timezone.now() > expiry_time:
+        if ist_timezone() > expiry_time:
             return None, "expired_token"
         user_id = parts[-1]
         return user_id, None

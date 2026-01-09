@@ -1,5 +1,6 @@
 from rest_framework.response import Response
 from rest_framework import status
+from django.utils import timezone
 
 def wrap_response(success, code, data=None, errors=None, status_code=status.HTTP_200_OK,message=None):
     response_data = {
@@ -23,3 +24,6 @@ def get_object_or_none(model, **kwargs):
         return model.objects.get(**kwargs)
     except model.DoesNotExist:
         return None
+
+def ist_timezone():
+    return timezone.localtime(timezone.now())

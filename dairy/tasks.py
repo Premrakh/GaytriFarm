@@ -1,5 +1,5 @@
 import logging
-from django.utils import timezone
+from gaytri_farm_app.utils import ist_timezone
 from django.db.models import Sum , F, ExpressionWrapper, IntegerField
 from user.models import User
 from .models import Order, DistributorOrder, CacheOrder
@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_daily_distributor_orders():
-    today = timezone.now().date()
+    today = ist_timezone().date()
     logger.info(f"➡️ Starting Distributor Order Creation for {today}")
 
     distributors = User.objects.filter(role=User.DISTRIBUTOR, role_accepted=True)

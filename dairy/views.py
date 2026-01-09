@@ -1,5 +1,4 @@
-from django.utils import timezone
-from gaytri_farm_app.utils import wrap_response, get_object_or_none
+from gaytri_farm_app.utils import wrap_response, get_object_or_none, ist_timezone
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
@@ -76,7 +75,7 @@ class CustomerOrderView(APIView):
     
     def get(self, request):
         product_id = request.query_params.get('product_id')       
-        now = timezone.now()
+        now = ist_timezone()
         if product_id:
             orders = Order.objects.filter(
                 customer=request.user,
@@ -169,7 +168,7 @@ class ManageOrderAPI(APIView):
         # Apply filters from query parameters
         # Date filter: today/tomorrow
         if day_filter:
-            today = timezone.now().date()
+            today = ist_timezone().date()
             if day_filter.lower() == 'today':
                 orders = orders.filter(date=today)
             elif day_filter.lower() == 'tomorrow':
@@ -386,7 +385,7 @@ class PauseOrderView(APIView):
 
     def delete(self,request):
         user = request.user
-        today = timezone.now().date()
+        today = ist_timezone().date()
         next_day = today + timedelta(days=1)
 
         # delete orders from next_day
@@ -502,7 +501,7 @@ class OrderHandlerView(ViewSet):
             return wrap_response(False, "customer_not_found", message="Customer not found")
         
         # Delete future orders (from tomorrow onwards)
-        today = timezone.now().date()
+        today = ist_timezone().date()
         next_day = today + timedelta(days=1)
         
         deleted_count, _ = Order.objects.filter(
