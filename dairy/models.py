@@ -3,6 +3,8 @@ from uuid import uuid4
 from django.db import models
 from user.models import User , Base
 from django.utils import timezone
+from storages.backends.s3boto3 import S3Boto3Storage
+
 # Create your models here.
 
 class Product(Base):
@@ -10,7 +12,7 @@ class Product(Base):
     description = models.TextField(null=True, blank=True)
     price = models.PositiveIntegerField()  
     distributor_price = models.PositiveIntegerField(null=True, blank=True)
-    image = models.ImageField(upload_to='products/', null=True, blank=True)
+    image = models.ImageField(upload_to='products/', storage=S3Boto3Storage(), null=True, blank=True)
     is_primary = models.BooleanField(default=False)
     def __str__(self):
         return self.name

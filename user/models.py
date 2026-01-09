@@ -4,6 +4,8 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from .manager import UserManager
 from django.utils import timezone
+from storages.backends.s3boto3 import S3Boto3Storage
+
 class Base(models.Model):
     created = models.DateTimeField(auto_now_add=True, null=True)
     modified = models.DateTimeField(auto_now=True)
@@ -96,7 +98,7 @@ class BankAccount(Base):
     holder_name = models.CharField(max_length=255)
     ifsc_code = models.CharField(max_length=11)
     gst_no = models.CharField(max_length=15,null=True,blank=True)
-    qr = models.ImageField(upload_to='qr_code/',null=True,blank=True)
+    qr = models.ImageField(upload_to='qr_code/',storage=S3Boto3Storage(),null=True,blank=True)
 
     def __str__(self):
         return f"Bank Account for {self.user.user_name}"
@@ -109,7 +111,7 @@ class UserBill(Base):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bills')
     total_product = models.PositiveIntegerField(default=0)
     total_amount = models.PositiveIntegerField(default=0)
-    pdf_file = models.FileField(upload_to='bills/', null=True, blank=True)
+    pdf_file = models.FileField(upload_to='bills/',storage=S3Boto3Storage(), null=True, blank=True)
     type = models.CharField(max_length=50, choices=[(CUSTOMER_BILL, 'Customer Bill'), (DISTRIBUTOR_BILL, 'Distributor Bill')], default=CUSTOMER_BILL)
     class Meta:
         ordering = ['-created']
