@@ -14,7 +14,7 @@ from pathlib import Path
 import dj_database_url
 import os
 from datetime import timedelta
-from celery.schedules import crontab
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 environment=os.getenv('Environment','local')
@@ -112,12 +112,10 @@ if environment=='production':
     DATABASES = {
         'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
             }
-    CELERY_BROKER_URL = f"{os.getenv('REDIS_URL')}/0"
 else:
     DATABASES = {
     'default': dj_database_url.config(default='postgres://postgres:postgres@localhost:5432/gaytri_farm')
         }
-    CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
 
 # Password validation
@@ -144,11 +142,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -202,17 +200,17 @@ BACKEND_URL = os.getenv('BACKEND_URL','http://localhost:8000')
 # CELERY_TIMEZONE = 'Asia/Kolkata'
 
 
-CELERY_BEAT_SCHEDULE = {
-    'generate_monthly_bills_task': {
-        'task': 'user.tasks.generate_monthly_bills_task',
-        'schedule': crontab(day_of_month=1, hour=5),  # every day at 05:00
-    },
-    'create_daily_distributor_orders': {
-        'task': 'dairy.tasks.create_daily_distributor_orders',
-        'schedule': crontab(hour=7, minute=0),  # every day at 07:00
-    },
-    'auto_order_create': {
-        'task': 'dairy.tasks.auto_order_create',
-        'schedule': crontab(day_of_month=25, hour=1, minute=0),  # 25th of every month at 01:00
-    },
-}
+# CELERY_BEAT_SCHEDULE = {
+#     'generate_monthly_bills_task': {
+#         'task': 'user.tasks.generate_monthly_bills_task',
+#         'schedule': crontab(day_of_month=1, hour=5),  # every day at 05:00
+#     },
+#     'create_daily_distributor_orders': {
+#         'task': 'dairy.tasks.create_daily_distributor_orders',
+#         'schedule': crontab(hour=7, minute=0),  # every day at 07:00
+#     },
+#     'auto_order_create': {
+#         'task': 'dairy.tasks.auto_order_create',
+#         'schedule': crontab(day_of_month=25, hour=1, minute=0),  # 25th of every month at 01:00
+#     },
+# }

@@ -5,6 +5,12 @@ from .views import (ProductDetailAPIView, ProductDetailAPIView, CustomerOrderVie
                      OrderHandlerView
 )
 
+from django.utils import timezone
+
+print('********************')
+print(timezone.now())
+print('********************')
+
 # Create a router and register the ViewSet
 router = DefaultRouter()
 router.register(r'order_handler', OrderHandlerView, basename='order_handler')

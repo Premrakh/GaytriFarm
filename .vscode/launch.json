@@ -6,18 +6,41 @@
             "type": "debugpy",
             "request": "launch",
             "args": [
-                "runserver" , "0.0.0.0:8000"
+                "runserver",
+                "0.0.0.0:8000"
             ],
             "django": true,
             "autoStartBrowser": false,
             "program": "${workspaceFolder}\\manage.py"
         },
         {
-            "name": "Genrate-Bill cmd",
+            "name": "Genrate Monthly Bill",
             "type": "debugpy",
             "request": "launch",
             "args": [
                 "generate_monthly_bills"
+            ],
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}\\manage.py"
+        },
+        {
+            "name": "Daily distributor orders",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "create_daily_distributor_orders"
+            ],
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}\\manage.py"
+        },
+        {
+            "name": "Auto Order Customer",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "auto_order_create"
             ],
             "django": true,
             "autoStartBrowser": false,

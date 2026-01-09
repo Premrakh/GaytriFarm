@@ -237,14 +237,14 @@ def generate_bill_pdf(bill_data):
 
     # ---------------- QR + BANK ----------------
     bank = bill_data.get('bank_account', {})
-    qr_io = _safe_fetch_image(bank.get('qr')) ### error
 
     qr_img = None
-    if qr_io:
-        qr_img = Image(qr_io, width=1.2*inch, height=1.2*inch)
     
     bank_lines = []
     if bank:
+        qr_io = _safe_fetch_image(bank.get('qr')) ### error
+        if qr_io:
+            qr_img = Image(qr_io, width=1.2*inch, height=1.2*inch)
         bank_lines.append('<b>Pay To:</b>')
         if bank.get('bank_name'): bank_lines.append(f"Bank Name: {bank.get('bank_name')}")
         if bank.get('account_no'): bank_lines.append(f"Account No: {bank.get('account_no')}")

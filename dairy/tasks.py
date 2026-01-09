@@ -1,5 +1,4 @@
 import logging
-from celery import shared_task
 from django.utils import timezone
 from django.db.models import Sum , F, ExpressionWrapper, IntegerField
 from user.models import User
@@ -7,7 +6,7 @@ from .models import Order, DistributorOrder, CacheOrder
 
 logger = logging.getLogger(__name__)
 
-@shared_task
+
 def create_daily_distributor_orders():
     today = timezone.now().date()
     logger.info(f"➡️ Starting Distributor Order Creation for {today}")
@@ -66,7 +65,6 @@ def create_daily_distributor_orders():
 
     logger.info(f"✅ Completed: Total {total_created} DistributorOrder entries created.")
 
-@shared_task
 def auto_order_create():
     """
     Monthly scheduled task to automatically create orders for customers.

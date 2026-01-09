@@ -1,5 +1,4 @@
 import logging
-from celery import shared_task
 from django.utils import timezone
 from django.db.models import Sum , F
 
@@ -194,7 +193,7 @@ def generate_distributor_bill(target_month, target_year,users=None):
     else:
         logger.info("✓ All bills generated successfully!")
 
-@shared_task()
+
 def generate_monthly_bills_task():
     """
     Celery task to generate monthly bills for all users.
