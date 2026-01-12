@@ -10,8 +10,8 @@ from storages.backends.s3boto3 import S3Boto3Storage
 class Product(Base):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(null=True, blank=True)
-    price = models.PositiveIntegerField()  
-    distributor_price = models.PositiveIntegerField(null=True, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)  
+    distributor_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     image = models.ImageField(upload_to='products/', storage=S3Boto3Storage(), null=True, blank=True)
     is_primary = models.BooleanField(default=False)
     def __str__(self):
@@ -32,7 +32,7 @@ class Order(Base):
     delivery_staff = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='deliveries')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
-    total_price = models.PositiveIntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField(default=timezone.now)
     status = models.CharField(max_length=50, choices=ORDER_CHOICES, default=PENDING)
 
@@ -43,7 +43,7 @@ class DistributorOrder(Base):
     distributor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='distributor_orders')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
-    total_price = models.PositiveIntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
     
     def __str__(self):
         return f"Order for {self.distributor.user_name}"

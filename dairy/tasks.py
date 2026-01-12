@@ -1,6 +1,6 @@
 import logging
 from gaytri_farm_app.utils import ist_timezone
-from django.db.models import Sum , F, ExpressionWrapper, IntegerField
+from django.db.models import Sum , F, ExpressionWrapper,DecimalField
 from user.models import User
 from .models import Order, DistributorOrder, CacheOrder
 
@@ -31,7 +31,7 @@ def create_daily_distributor_orders():
                 total_qty=Sum('quantity'),
                 total_amount=ExpressionWrapper(
                     Sum('quantity') * F('product__distributor_price'),
-                    output_field=IntegerField()
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
                 )
             )
         )

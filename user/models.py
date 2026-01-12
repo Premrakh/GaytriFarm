@@ -45,7 +45,7 @@ class User(AbstractBaseUser, PermissionsMixin, Base):
     delivery_staff = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,related_name="delivery_staff_users")
     rank = models.PositiveIntegerField(default=0)
     # ---------- FINANCIAL ----------
-    balance = models.IntegerField(default=0, help_text="Customer balance: payments - delivered orders")
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Customer balance: payments - delivered orders")
     # ---------- STATUS FLAGS ----------
     is_email_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -110,7 +110,7 @@ class UserBill(Base):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bills')
     total_product = models.PositiveIntegerField(default=0)
-    total_amount = models.PositiveIntegerField(default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     pdf_file = models.FileField(upload_to='bills/',storage=S3Boto3Storage(), null=True, blank=True)
     type = models.CharField(max_length=50, choices=[(CUSTOMER_BILL, 'Customer Bill'), (DISTRIBUTOR_BILL, 'Distributor Bill')], default=CUSTOMER_BILL)
     class Meta:
