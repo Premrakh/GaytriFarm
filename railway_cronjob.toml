@@ -1,0 +1,21 @@
+[build]
+builder = "nixpacks"
+buildCommand = "chmod +x build.sh && ./build.sh"
+
+[deploy]
+startCommand = "python manage.py cron_runner"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+
+
+# Environment variables
+[deploy.env]
+PYTHONUNBUFFERED = "1"
+DJANGO_SETTINGS_MODULE = "gaytri_farm_app.settings"
+Environment = "production"
+
+# Service configuration for web service
+[[services]]
+name = "web"
+type = "web"
