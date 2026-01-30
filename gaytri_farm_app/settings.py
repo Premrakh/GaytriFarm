@@ -197,20 +197,17 @@ REST_FRAMEWORK = {
 
 FRONTEND_URL = os.getenv('FRONTEND_URL','http://localhost:3000')
 BACKEND_URL = os.getenv('BACKEND_URL','http://localhost:8000')
-# CELERY_TIMEZONE = 'Asia/Kolkata'
 
-
-# CELERY_BEAT_SCHEDULE = {
-#     'generate_monthly_bills_task': {
-#         'task': 'user.tasks.generate_monthly_bills_task',
-#         'schedule': crontab(day_of_month=1, hour=5),  # every day at 05:00
-#     },
-#     'create_daily_distributor_orders': {
-#         'task': 'dairy.tasks.create_daily_distributor_orders',
-#         'schedule': crontab(hour=7, minute=0),  # every day at 07:00
-#     },
-#     'auto_order_create': {
-#         'task': 'dairy.tasks.auto_order_create',
-#         'schedule': crontab(day_of_month=25, hour=1, minute=0),  # 25th of every month at 01:00
-#     },
-# }
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
