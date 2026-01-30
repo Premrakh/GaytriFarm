@@ -4,6 +4,9 @@ from user.tasks import generate_monthly_bills_task
 from dairy.tasks import auto_order_create, create_daily_distributor_orders
 from django.core.cache import cache
 from gaytri_farm_app.utils import ist_timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 def run_once(key, ttl=86400):  # 24 hours
     if cache.get(key):
@@ -17,6 +20,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         now = ist_timezone()
+        logger.info(f"Running cron job at {now}")
 
         day = now.day
 
