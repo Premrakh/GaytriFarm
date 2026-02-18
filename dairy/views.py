@@ -172,7 +172,7 @@ class ManageOrderAPI(APIView):
             if day_filter.lower() == 'today':
                 orders = orders.filter(date=today)
             elif day_filter.lower() == 'tomorrow':
-                tomorrow = today + timezone.timedelta(days=1)
+                tomorrow = today + timedelta(days=1)
                 orders = orders.filter(date=tomorrow)
         
         # User filter (customer filter)
