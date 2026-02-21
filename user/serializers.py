@@ -121,10 +121,19 @@ class AddCustomerSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
     confirm_password = serializers.CharField(required=True)
+    # distributor = serializers.IntegerField(required=False)
+
     class Meta:
         model = User
         fields = ['email', 'user_name', 'password', 'confirm_password','delivery_staff','first_name','last_name',
-                 'country','state','city','address','pin_code','mobile']
+                 'country','state','city','address','pin_code','mobile', 'distributor']
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        if user.is_superuser:
+            if not attrs.get('distributor'):
+                raise serializers.ValidationError({"distributor": "Distributor is required for admin users."})
+        return super().validate(attrs)
 
 class CustomerRankSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=True)

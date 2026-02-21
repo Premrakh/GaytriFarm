@@ -468,9 +468,9 @@ class ChangePasswordView(APIView):
 
 # Distributor Add customers without email verification    
 class AddCustomer(APIView):
-    permission_classes = [IsAuthenticated, DistributorPermission]
+    permission_classes = [IsAuthenticated, AdminOrDistributorPermission]
     def post(self, request):
-        serializer = AddCustomerSerializer(data=request.data)
+        serializer = AddCustomerSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             email = serializer.validated_data.get('email')
             user_name = serializer.validated_data.get('user_name')
@@ -484,6 +484,16 @@ class AddCustomer(APIView):
                                         message="A user with this email and username already exists.", 
                                         status_code=status.HTTP_400_BAD_REQUEST
                                         )
+            user = request.user
+            if user.role == User.DISTRIBUTOR:
+                distributor = user
+            else:
+                distributor = serializer.validated_data.get('distributor')
+
+            # Build optional fields dict — only include if provided, so model defaults are preserved
+            optional_fields = ['mobile', 'first_name', 'last_name', 'country', 'state', 'city', 'address', 'pin_code']
+            extra_kwargs = {field: serializer.validated_data[field] for field in optional_fields if serializer.validated_data.get(field)}
+
             user = User.objects.create_user(
                     email=email,
                     user_name=user_name,
@@ -491,16 +501,9 @@ class AddCustomer(APIView):
                     is_email_verified=True,
                     role=User.CUSTOMER,
                     role_accepted=True,
-                    distributor=request.user,
+                    distributor=distributor,
                     delivery_staff=delivery_staff,
-                    mobile=serializer.validated_data.get('mobile'),
-                    first_name=serializer.validated_data.get('first_name'),
-                    last_name=serializer.validated_data.get('last_name'),
-                    country=serializer.validated_data.get('country'),
-                    state=serializer.validated_data.get('state'),
-                    city=serializer.validated_data.get('city'),
-                    address=serializer.validated_data.get('address'),
-                    pin_code=serializer.validated_data.get('pin_code')
+                    **extra_kwargs
                 )
             return wrap_response(True, "user_added", message="User added successfully.")
         return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)
