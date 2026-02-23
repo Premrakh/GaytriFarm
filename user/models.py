@@ -123,3 +123,7 @@ class UserBill(Base):
 
     def __str__(self):
         return f"Bill for {self.user.user_name}"
+
+class UserToken(Base):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="user_token")
+    access_token = models.CharField(max_length=255)

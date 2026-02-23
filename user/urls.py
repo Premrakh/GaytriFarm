@@ -33,4 +33,5 @@ urlpatterns = [
     path('bills/', UserBillView.as_view()),
     path('generate_bill/', GenerateBillView.as_view()),
     path('status/', UserStatusView.as_view()),
+    path('change-password/', ChangePasswordView.as_view()),
 ]   

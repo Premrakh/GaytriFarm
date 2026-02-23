@@ -189,7 +189,7 @@ SIMPLE_JWT = {
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "gaytri_farm_app.custom_authentication.CustomAuthentication",
     ),
     "EXCEPTION_HANDLER": "gaytri_farm_app.exceptions.custom_exception_handler",
 }

@@ -98,22 +98,23 @@ class CustomerApprovalSerializer(UserApprovalSerializer):
     
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True, min_length=8)
+    distributor = serializers.IntegerField(required=True)
+    password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True, min_length=8)
 
-    def validate_old_password(self, value):
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Old password is incorrect.")
-        return value
-    
-    def validate_password(self, value):
+    def validate(self, attrs):
+        password = attrs.get('password')
+        confirm_password = attrs.get('confirm_password')
+
+        if password != confirm_password:
+            raise serializers.ValidationError("Password and confirm password must match.")
+
         pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
-        if not re.match(pattern, value):
+        if not re.match(pattern, password):
             raise serializers.ValidationError(
                 "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one digit, and one special character."
             )
-        return value
+        return attrs
 
 
 class AddCustomerSerializer(serializers.ModelSerializer):

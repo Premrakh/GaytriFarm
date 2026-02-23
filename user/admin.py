@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User,EmailVerificationToken, Payment, BankAccount, UserBill
+from .models import User,EmailVerificationToken, Payment, BankAccount, UserBill,UserToken
 # Register your models here.
 
 @admin.register(User)
@@ -28,3 +28,10 @@ admin.site.register(BankAccount)
 class UserBillAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'created','type')
     list_filter = ('user', 'type', 'created')
+
+
+@admin.register(UserToken)
+class UserTokenAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'created','modified')
+    list_filter = ('user', 'created')
+    search_fields = ('user__user_id','user__email')

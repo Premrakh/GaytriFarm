@@ -5,7 +5,7 @@ from gaytri_farm_app.utils import ist_timezone
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
-
+from user.models import UserToken
 key=b'njVD0FDf5dqAJ7YREQRNVXRUQ39XmK29uIqz357Jj0s='
 fernet=Fernet(key)
 
@@ -100,3 +100,9 @@ def send_forgot_password_email(email, token):
         print(f"Error sending email: {e}")
         return False
 
+
+def update_access_token(user_id, token):
+    user_token, created = UserToken.objects.get_or_create(user_id=user_id, defaults={"access_token": token})
+    if not created:
+        user_token.access_token = token
+        user_token.save()

@@ -3,21 +3,20 @@ from rest_framework.views import APIView
 from rest_framework import status
 import random, string
 from django.utils import timezone
-from .models import User, EmailVerificationToken,  UserBill
+from .models import User, EmailVerificationToken,  UserBill,UserToken
 from dairy.models import Order
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
         EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,UserBillSerializer,
         CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer,BankAccountSerializer,
         GenerateBillSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
-from .service import send_forgot_password_email, send_verification_email
+from .service import send_forgot_password_email, send_verification_email, update_access_token
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (IsVerified, IsRegistered, AdminUserPermission, DistributorPermission, AdminOrDistributorPermission, CustomerPermission
 )
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db.models import OuterRef, Exists, Q, Sum, F
+from django.db.models import Q, Sum, F
 from django.db import transaction
-from dateutil.relativedelta import relativedelta
 from .tasks import generate_customer_bill, generate_distributor_bill
 # Create your views here.
 
@@ -153,10 +152,16 @@ class UserLoginView(APIView):
 
         user = get_object_or_none(User, email=email)
         if user and user.check_password(password):
+            
             refresh = RefreshToken.for_user(user)
+            access = str(refresh.access_token)
+            #update access token
+            if user.role == User.DISTRIBUTOR:
+                update_access_token(user.user_id, access)
+
             data = {
                 "refresh": str(refresh),
-                "access": str(refresh.access_token),
+                "access": access,
                 "user_id": user.user_id,
                 "email_verified": user.is_email_verified,
                 "role_accepted": user.role_accepted,
@@ -454,14 +459,17 @@ class ChangePasswordView(APIView):
     """
     Allows authenticated users to change their password by providing the old password.
     """
-    permission_classes = [IsAuthenticated,IsVerified]
+    permission_classes = [IsAuthenticated,AdminUserPermission]
 
     def post(self, request, *args, **kwargs):
-        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer = ChangePasswordSerializer(data=request.data)
         if serializer.is_valid():
-            user = request.user
-            user.set_password(serializer.validated_data['new_password'])
+            user = get_object_or_none(User, user_id=serializer.validated_data['distributor'])
+            if not user:
+                return wrap_response(success=False, code="user_not_found", message="User not found.")
+            user.set_password(serializer.validated_data['password'])
             user.save()
+            UserToken.objects.filter(user_id=user.user_id).delete()
             return wrap_response(success=True, code="password_changed", message="Password changed successfully.")
         return wrap_response(success=False, code="invalid_data", errors=serializer.errors)
 
