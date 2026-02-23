@@ -1,6 +1,6 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
-from user.models import UserToken
+from user.models import User, UserToken
 
 
 class CustomAuthentication(JWTAuthentication):
@@ -23,7 +23,7 @@ class CustomAuthentication(JWTAuthentication):
         user, validated_token = result
 
         # Check if the user has a stored UserToken and if it matches
-        if not UserToken.objects.filter(user=user, access_token=str(validated_token)).exists():
+        if user.role == User.DISTRIBUTOR and not UserToken.objects.filter(user=user, access_token=str(validated_token)).exists():
             raise AuthenticationFailed({
                 "success": False,
                 "code": "token_not_exist",
