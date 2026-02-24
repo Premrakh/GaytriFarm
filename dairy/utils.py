@@ -3,7 +3,7 @@ from calendar import monthrange
 from .models import Order
 
 
-def create_bulk_orders(customer, product, base_quantity, order_type):
+def create_bulk_orders(customer, product, base_quantity, order_type,start_date):
     """
     Create bulk orders for a customer for the next 3 months based on order type.
     
@@ -18,7 +18,7 @@ def create_bulk_orders(customer, product, base_quantity, order_type):
     """
     delivery_staff = getattr(customer, "delivery_staff", None)
     today = date.today()
-    start_date = today + timedelta(days=1)  # start from tomorrow
+    # start_date = today + timedelta(days=1)  # start from tomorrow
     orders_to_create = []
 
     # create orders for upcoming 3 months: remainder of this month (from tomorrow) + next 2 months

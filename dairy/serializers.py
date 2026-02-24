@@ -51,7 +51,7 @@ class BulkOrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['product', 'quantity',  'type']
+        fields = ['product', 'quantity',  'type', 'date']
 
 class AdminBulkOrderSerializer(BulkOrderSerializer):
     class Meta:

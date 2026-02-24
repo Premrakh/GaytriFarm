@@ -342,9 +342,15 @@ class StartOrderView(APIView):
             return wrap_response(False, "invalid_data", errors=serializer.errors)
 
         data = serializer.validated_data
-        product = data['product']
-        base_quantity = data['quantity']
-        order_type = data['type']
+        product = serializer.validated_data['product']
+        base_quantity = serializer.validated_data['quantity']
+        order_type = serializer.validated_data['type']
+        date = serializer.validated_data.get('date')
+
+        if date and date <= ist_timezone().date():
+            return wrap_response(False, "invalid_date", message="Date cannot be in the past or today")
+        if not date:
+            date = ist_timezone().date() + timedelta(days=1)    
 
         cache_order = CacheOrder.objects.filter(customer=request.user)
         if cache_order.exists():
@@ -359,7 +365,7 @@ class StartOrderView(APIView):
         customer = request.user
         
         # Create bulk orders using utility function
-        orders_count = create_bulk_orders(customer, product, base_quantity, order_type)
+        orders_count = create_bulk_orders(customer, product, base_quantity, order_type,date)
 
         return wrap_response(
             True,
