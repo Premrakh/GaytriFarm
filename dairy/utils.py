@@ -20,7 +20,8 @@ def create_bulk_orders(customer, product, base_quantity, order_type,start_date):
     today = date.today()
     # start_date = today + timedelta(days=1)  # start from tomorrow
     orders_to_create = []
-
+    is_order_alternate = True
+    cycle_order_count = 1
     # create orders for upcoming 3 months: remainder of this month (from tomorrow) + next 2 months
     for month_offset in range(3):
         # compute year and month for this offset
@@ -43,16 +44,16 @@ def create_bulk_orders(customer, product, base_quantity, order_type,start_date):
 
             if order_type == 'every_day':
                 quantity = base_quantity
-            elif order_type == 'alternate_day':
-                # keep 1st,3rd,5th... (idx 0,2,4 => even idx)
-                if idx % 2 != 0:
-                    continue
+            elif order_type == 'alternate_day' and is_order_alternate:
                 quantity = base_quantity
+                is_order_alternate = not is_order_alternate
+
             elif order_type == 'one_two_cycle':
-                # alternate 1 and 2 quantities each day: use idx parity
-                quantity = 2 if idx % 2 != 0 else 1
+                quantity = cycle_order_count
+                cycle_order_count = 2 if cycle_order_count == 1 else 1
+
             else:
-                # unknown type skip
+                is_order_alternate = not is_order_alternate
                 continue
 
             orders_to_create.append(

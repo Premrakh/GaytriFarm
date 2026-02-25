@@ -477,14 +477,18 @@ class OrderHandlerView(ViewSet):
         product = serializer.validated_data['product']
         base_quantity = serializer.validated_data['quantity']
         order_type = serializer.validated_data['type']
-        
+        date = serializer.validated_data.get('date')
+        if date and date <= ist_timezone().date():
+            return wrap_response(False, "invalid_date", message="Date cannot be in the past or today")
+        if not date:
+            date = ist_timezone().date() + timedelta(days=1) 
         # Get customer
         if not request.user.is_superuser:
             if customer.distributor != request.user:
                 return wrap_response(False, "unauthorized", message="You are not authorized to create orders for this customer")
 
         # Create bulk orders using utility function
-        orders_count = create_bulk_orders(customer, product, base_quantity, order_type)
+        orders_count = create_bulk_orders(customer, product, base_quantity, order_type,date)
         
         return wrap_response(
             True,

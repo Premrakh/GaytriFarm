@@ -56,7 +56,7 @@ class BulkOrderSerializer(serializers.ModelSerializer):
 class AdminBulkOrderSerializer(BulkOrderSerializer):
     class Meta:
         model = Order
-        fields = ['customer','product', 'quantity',  'type']
+        fields = ['customer','product', 'quantity',  'type','date']
 
 class AdminDeleteOrderSerializer(serializers.Serializer):
     """Serializer for admin to delete orders within a date range for a customer"""
