@@ -152,6 +152,8 @@ class UserLoginView(APIView):
 
         user = get_object_or_none(User, email=email)
         if user and user.check_password(password):
+            if not user.is_active:
+                return wrap_response(False, "user_inactive", message="Your account is inactive")
             
             refresh = RefreshToken.for_user(user)
             access = str(refresh.access_token)
