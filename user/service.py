@@ -102,7 +102,5 @@ def send_forgot_password_email(email, token):
 
 
 def update_access_token(user_id, token):
-    user_token, created = UserToken.objects.get_or_create(user_id=user_id, defaults={"access_token": token})
-    if not created:
-        user_token.access_token = token
-        user_token.save()
+    UserToken.objects.create(user_id=user_id, access_token=token)
+    

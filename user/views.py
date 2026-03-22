@@ -469,7 +469,9 @@ class ChangePasswordView(APIView):
                 return wrap_response(success=False, code="user_not_found", message="User not found.")
             user.set_password(serializer.validated_data['password'])
             user.save()
-            UserToken.objects.filter(user_id=user.user_id).delete()
+            #update access token
+            if user.role == User.DISTRIBUTOR:
+                UserToken.objects.filter(user_id=user.user_id).delete()
             return wrap_response(success=True, code="password_changed", message="Password changed successfully.")
         return wrap_response(success=False, code="invalid_data", errors=serializer.errors)
 

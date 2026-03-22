@@ -17,7 +17,7 @@ urlpatterns = [
     path('update-fcm-token/', UpdateFCMTokenView.as_view()),
     path('forgot-password/', ForgotPasswordView.as_view()),
     path('reset-password/', ResetPasswordView.as_view()),
-    path('change-password/', ChangePasswordView.as_view()),
+    # path('change-password/', ChangePasswordView.as_view()),
     path('customers/', CustomerView.as_view()),
     path('delivery-staff/', DeliveryStaffView.as_view()),
     path('distributors/', DistributorView.as_view()),
