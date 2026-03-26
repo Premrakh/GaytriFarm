@@ -8,7 +8,7 @@ from dairy.models import Order
 from .serializers import (EnrollUsersSerializer, ResetPasswordSerializer, UpdateAccountSerializer, UserApprovalSerializer, UserRegisterSerializer, 
         EmailVerificationSerializer, UserLoginSerializer, UserRoleSerializer, AccountSerializer, UserApprovalSerializer,UserBillSerializer,
         CustomerApprovalSerializer,ChangePasswordSerializer, AddCustomerSerializer, RouteSetupSerializer,PaymentSerializer,BankAccountSerializer,
-        GenerateBillSerializer)
+        GenerateBillSerializer,CreateAdminSerializer,UpdateUserSerializer)
 from gaytri_farm_app.utils import wrap_response, get_object_or_none
 from .service import send_forgot_password_email, send_verification_email, update_access_token
 from rest_framework.permissions import IsAuthenticated
@@ -571,6 +571,28 @@ class UpdateCustomerDelievery(APIView):
         customer.save()
         return wrap_response(True, "customer_delivery_staff_updated", message="Customer delivery staff updated successfully")
 
+class UpdateCustomerDistributor(APIView):
+    "Distributor & admin update customer delivery staff"
+    permission_classes = [IsAuthenticated, IsVerified, AdminUserPermission]
+    def patch(self,request):
+        distributor_id = request.data.get('distributor_id')
+        delivery_staff_id = request.data.get('delivery_staff_id')
+        customer_id = request.data.get('customer_id')
+        if not delivery_staff_id or not customer_id or not distributor_id:
+            return wrap_response(False, "invalid_data", message="Invalid data", errors="delivery_staff_id or customer_id or distributor_id is missing")
+        customer = User.objects.filter(user_id=customer_id, role=User.CUSTOMER).first()
+        if not customer:
+            return wrap_response(False, "customer_not_found", message="Customer not found")
+        try:
+            customer.distributor_id = distributor_id
+            customer.delivery_staff_id = delivery_staff_id
+            customer.rank = 0
+            customer.save()
+            return wrap_response(True, "customer_delivery_staff_updated", message="Customer delivery staff updated successfully")
+        except Exception as e:
+            return wrap_response(False, "customer_delivery_staff_update_failed", message="Customer delivery staff update failed", errors=str(e))
+
+
 class ActiveDeactiveCustomer(APIView):
     permission_classes = [IsAuthenticated, IsVerified, AdminOrDistributorPermission]
 
@@ -822,3 +844,47 @@ class UserStatusView(APIView):
         if not user:
             return wrap_response(False, code='user_not_found', message="User not found")
         return wrap_response(True, code='user_mode_retrieve', data=user.is_pause)
+
+
+class CreateAdminView(APIView):
+    permission_classes = [IsAuthenticated, IsVerified, AdminUserPermission]
+    def post(self, request):
+        serializer = CreateAdminSerializer(data=request.data)
+        if not serializer.is_valid():
+            return wrap_response(False, code='invalid_data', errors=serializer.errors)
+        email = serializer.validated_data['email']
+        user_name = serializer.validated_data['user_name']
+        password = serializer.validated_data['password']
+        user = User.objects.filter(email=email).first()
+        if user:
+            return wrap_response(False, code='user_already_exists', message="User already exists")
+        user = User.objects.create_user(
+            email=email,
+            user_name=user_name,
+            password=password,
+            is_email_verified=True,
+            role=User.ADMIN,
+            role_accepted=True,
+            is_active=True,
+            is_superuser=True,
+            is_staff=True
+        )
+        return wrap_response(True, code='admin_created', message="Admin created successfully")
+
+class UpdateUserView(APIView):
+    permission_classes = [IsAuthenticated, IsVerified, AdminUserPermission]
+
+    def patch(self, request):
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return wrap_response(False, "user_id_required", message="user_id is required")
+        
+        user = get_object_or_none(User, user_id=user_id)
+        if not user:
+            return wrap_response(False, "user_not_found", message="User not found")
+        
+        serializer = UpdateUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return wrap_response(True, "user_updated", data=serializer.data, message="User updated successfully")
+        return wrap_response(False, "invalid_data", message="Invalid data", errors=serializer.errors)

@@ -4,7 +4,8 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from gaytri_farm_app.custom_permission import (
-    IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, DeliveryStaffPermission, DistributorOrStaffPermission, AdminOrDistributorPermission
+    IsVerified,  AdminUserPermission, CustomerPermission, DistributorPermission, 
+    DeliveryStaffPermission, DistributorOrStaffPermission, AdminOrDistributorPermission, AdminOrStaffPermission
 )
 from .models import Product, Order, DistributorOrder,CacheOrder
 from user.models import User
@@ -404,7 +405,7 @@ class PauseOrderView(APIView):
 
 
 class DeliveredOrdersCount(APIView):
-    permission_classes = [IsAuthenticated,IsVerified, DeliveryStaffPermission]
+    permission_classes = [IsAuthenticated,IsVerified, AdminOrStaffPermission]
     def get(self, request):
         start_date_str = request.query_params.get('start_date')
         end_date_str = request.query_params.get('end_date')
@@ -412,9 +413,15 @@ class DeliveredOrdersCount(APIView):
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
         if not start_date or not end_date:
             return wrap_response(False, "start_end_date_required", message="start_date and end_date query parameters are required") 
-        user = request.user
+        if request.user.is_superuser:
+            staff_id = request.query_params.get('staff_id')
+            if not staff_id:
+                return wrap_response(False, "staff_id_required", message="staff_id query parameter is required")
+        else:
+            staff_id = request.user.user_id
+
         orders_count = Order.objects.filter(
-                            delivery_staff=user,
+                            delivery_staff_id=staff_id,
                             status=Order.DELIVERED,
                             date__range=(start_date, end_date),
                             product__is_primary=True

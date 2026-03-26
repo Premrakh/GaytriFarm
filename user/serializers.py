@@ -176,3 +176,33 @@ class GenerateBillSerializer(serializers.Serializer):
     user_id = serializers.CharField()
     month = serializers.IntegerField()
     year = serializers.IntegerField()
+
+class CreateAdminSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=True)
+    user_name = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+    class Meta:
+        model = User
+        fields = ['email', 'user_name', 'password', 'confirm_password']
+    
+    def validate_password(self, value):
+        pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError("Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one digit, and one special character.")
+        return value
+    
+    def validate_confirm_password(self, value):
+        password = self.initial_data.get("password")
+        if password != value:
+            raise serializers.ValidationError("password and confirm_password fields didn't match.")
+        return value
+
+class UpdateUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'email', 'mobile', 'user_name', 'first_name', 'last_name', 
+            'country', 'state', 'city', 'address', 'pin_code', 
+            'balance', 'is_active', 'is_pause'
+        ]

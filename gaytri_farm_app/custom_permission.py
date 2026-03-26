@@ -64,7 +64,7 @@ class DistributorPermission(BasePermission):
 
 class DeliveryStaffPermission(BasePermission):
     def has_permission(self, request, view):
-        if request.user.role == request.user.DELIVERY_STAFF and request.user.role_accepted:
+        if request.user.role == User.DELIVERY_STAFF and request.user.role_accepted:
                 return True
         raise PermissionDenied(detail={
             "success": False,
@@ -104,6 +104,21 @@ class AdminOrDistributorPermission(BasePermission):
                 "role":request.user.role,
             },
             "message": "User is neither a distributor nor an admin."
+        })
+
+class AdminOrStaffPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.role == User.DELIVERY_STAFF and request.user.role_accepted:
+                return True
+        if request.user.is_superuser:
+                return True
+        raise PermissionDenied(detail={
+            "success": False,
+            "code": "user_not_staff_or_admin",
+            "data":{
+                "role":request.user.role,
+            },
+            "message": "User is neither a staff nor an admin."
         })
 
 class DistributorOrStaffPermission(BasePermission):
