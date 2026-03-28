@@ -405,7 +405,7 @@ class PauseOrderView(APIView):
 
 
 class DeliveredOrdersCount(APIView):
-    permission_classes = [IsAuthenticated,IsVerified, AdminOrStaffPermission]
+    permission_classes = [IsAuthenticated,IsVerified]
     def get(self, request):
         start_date_str = request.query_params.get('start_date')
         end_date_str = request.query_params.get('end_date')
@@ -413,11 +413,8 @@ class DeliveredOrdersCount(APIView):
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
         if not start_date or not end_date:
             return wrap_response(False, "start_end_date_required", message="start_date and end_date query parameters are required") 
-        if request.user.is_superuser:
-            staff_id = request.query_params.get('staff_id')
-            if not staff_id:
-                return wrap_response(False, "staff_id_required", message="staff_id query parameter is required")
-        else:
+        staff_id = request.query_params.get('staff_id')
+        if not staff_id:
             staff_id = request.user.user_id
 
         orders_count = Order.objects.filter(
