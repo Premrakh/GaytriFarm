@@ -1,5 +1,7 @@
+import os
 from io import BytesIO
 from django.core.files.base import ContentFile
+from django.conf import settings
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
@@ -88,11 +90,23 @@ def generate_bill_pdf(bill_data):
 
     distributor_para = Paragraph("<br/>".join(header_lines), normal)
 
-    header = Table([[distributor_para, ""]], colWidths=[page_width * 0.62, page_width * 0.38])
+    # ---------------- LOGO (right side of header) ----------------
+    logo_cell = ""
+    try:
+        logo_path = os.path.join(settings.MEDIA_ROOT, "gayatri_farm_logo.png")
+        if os.path.exists(logo_path):
+            logo_cell = Image(logo_path, width=1.4 * inch, height=1.0 * inch)
+            logo_cell.hAlign = 'RIGHT'
+    except Exception as e:
+        print(f"Logo load error: {e}")
+
+    header = Table([[distributor_para, logo_cell]], colWidths=[page_width * 0.62, page_width * 0.38])
     header.setStyle(TableStyle([
         ('LINEBELOW', (0, 0), (-1, 0), 1, colors.lightgrey),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
         ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
     ]))
     elements.append(header)
     elements.append(Spacer(1, 8))
@@ -254,8 +268,11 @@ def generate_bill_pdf(bill_data):
     bank_para = Paragraph("<br/>".join(bank_lines), normal)
 
     # Table layout: QR on left, Bank details on right
-    row = [qr_img if qr_img else '', bank_para]
-    t = Table([row], colWidths=[page_width * 0.23, page_width * 0.77])
+    if qr_img:
+        row = [qr_img if qr_img else '', bank_para]
+        t = Table([row], colWidths=[page_width * 0.23, page_width * 0.77])
+    else:
+        t = Table([[bank_para]], colWidths=[page_width])
     t.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),

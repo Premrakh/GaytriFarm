@@ -32,7 +32,7 @@ celerybeat.pid
 
 # ================ media ========================
 bills/
-media/
+# media/
 
 # ================ creditials ========================
 prem_credentials.csv
